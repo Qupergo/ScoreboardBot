@@ -1,13 +1,30 @@
 import aiohttp
 import os
 import json
-from discord import Activity, ActivityType
+import discord
+from discord import Activity, ActivityType, Embed
 from discord.ext.commands import Bot
 from keep_alive import keep_alive
+
+
+import dbl
+from discord.ext import commands
+
+class TopGG(commands.Cog):
+    """Handles interactions with the top.gg API"""
+
+    def __init__(self, bot):
+        self.bot = bot
+        self.token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY0MTIyOTE1MzQzMzI4ODcyNCIsImJvdCI6dHJ1ZSwiaWF0IjoxNTc2MTYzNzk4fQ._imK5bBS2eeLyIXiolADEfeyTliaTrHYI-B05ECV58Q' # set this to your DBL token
+        self.dblpy = dbl.DBLClient(self.bot, self.token, autopost=True) # Autopost will post your guild count every 30 minutes
+
+    async def on_guild_post():
+        print("Server count posted successfully")
 
 DISCORD_MESSAGE_PREFIX = ["s!", "<@641229153433288724>", "s! ", "<@641229153433288724> "]
 
 client = Bot(command_prefix=DISCORD_MESSAGE_PREFIX)
+
 
 @client.event
 async def on_ready():
@@ -101,7 +118,7 @@ async def addMember(ctx, *args):
     try:
       scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][member] = 0
     except KeyError:
-        await ctx.send(f"The scoreboard {scoreboard_name} does not exist")
+        await ctx.send(f"The scoreboard {scoreboard_name} does not exist.")
         return
 
   with open('scoreboards.txt', "w") as scoreboards_orig:
@@ -128,6 +145,7 @@ async def addPoints(ctx, *args):
     
     try:
       scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][member] += int(points)
+      new_score = scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][member]
     except KeyError:
       await ctx.send(f"There does not seem to be a {member} in {scoreboard_name}.\n" + correct_usage)
       return
@@ -136,9 +154,9 @@ async def addPoints(ctx, *args):
     json.dump(scoreboards, scoreboards_orig)
 
   if points == "1":
-    await ctx.send(f'Added 1 point to {member}')
+    await ctx.send(f'Added 1 point to {member}, new score is {new_score}.')
   else:
-    await ctx.send(f'Added {points} points to {member}')
+    await ctx.send(f'Added {points} points to {member}, new score is {new_score}.')
 
 #removeMember
 @client.command(name='removeMember',
@@ -167,7 +185,6 @@ async def removeMember(ctx, *args):
 
     await ctx.send(f'Succesfully removed {member} from {scoreboard_name}.')
 
-
 #removePoints
 @client.command(name='removePoints',
                 description="Removes points from someone on a specified scoreboard.\n\nCorrect usage is s!removePoints [member] [scoreboard] [points]",
@@ -185,7 +202,7 @@ async def removePoints(ctx, *args):
     scoreboards = json.load(scoreboards_orig)
     try:
       scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][member] -= int(points)
-    
+      new_score = scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][member]
     except KeyError:
       await ctx.send(f"{member} does not seem to exist in {scoreboard_name}.\n{correct_usage}")
 
@@ -193,9 +210,9 @@ async def removePoints(ctx, *args):
     json.dump(scoreboards, scoreboards_orig)
 
   if points == "1":
-    await ctx.send(f'Removed 1 point from {member}')
+    await ctx.send(f'Removed 1 point from {member}, new score is {new_score}.')
   else:
-    await ctx.send(f'Removed {points} points from {member}')
+    await ctx.send(f'Removed {points} points from {member}, new score is {new_score}.')
 
 #show
 @client.command(name='show',
@@ -203,18 +220,23 @@ async def removePoints(ctx, *args):
                 brief="Shows a scoreboard.",
                 aliases=['Show'])
 async def show(ctx, *args):
-  correct_usage = "Correct usage is s!show [scoreboard]"
-
+  correct_usage = "Correct usage is s!show [scoreboard] [page_number]"
+  page_number = 1
   try:
     scoreboard_name = args[0]
-  except ValueError:
+  except:
     await ctx.send("Something went wrong!\n" + correct_usage)
     return
-    
+
+  if len(args) > 1:
+    try:
+      page_number = int(args[1])
+    except:
+      pass
+
   with open('scoreboards.txt', "r") as scoreboards_orig:
     scoreboards = json.load(scoreboards_orig)
 
-    members = []
     member_order = []
     try:
       #Make a sorted list of the members by their points
@@ -223,24 +245,50 @@ async def show(ctx, *args):
       member_order.sort(key=lambda x:int(x[1]), reverse=True)
       
       #Make string look nicer before sending
+      iteration = 0
+      pages = []
+      members_per_page = 20
+      current_page = []
+
       for key, value in member_order:
-        members.append(f"{key}\t{':'}\t{value}")
-      nl = "\n"
-      scoreboard_visual = f"__{scoreboard_name}__\n\n{nl.join(members)}"
-      await ctx.send(scoreboard_visual)
+        current_page.append(f"{key}\t{':'}\t{value}")
+        iteration += 1
+
+        
+        if iteration == members_per_page:
+          pages.append(current_page.copy())
+          current_page = []
+          iteration = 0
+
+      if iteration > 0:
+        pages.append(current_page)
+
+      if (page_number-1) > len(pages) or (page_number - 1) < 0:
+        page_number = len(pages)
+
+      embed = Embed(title=f"**{scoreboard_name}**", colour=discord.Colour(900))
+
+      embed.add_field(name="Members", value="\t\n".join(pages[page_number-1]))
+      embed.add_field(name="Page", value=f"{page_number}/{len(pages)}")
+
+      try:
+        await ctx.send(embed=embed)
+      except:
+        await ctx.send("I don't have permissions for that.")
     
     except KeyError:
       await ctx.send("That scoreboard does not seem to exist on this server.\n" + correct_usage)
 
+#ResetScoreboard
 @client.command(name='resetScoreboard',
                 description="Resets all scores on a specified scoreboard.\n\nCorrect usage is s!resetScores [scoreboard]",
                 brief="Resets all scores on a specified scoreboard",
-                aliases=['reset_scores', 'resetscores', "ResetScores", "resetScores", 'reset_scoreboard', 'resetscoreboard', "ResetScoreboard"])
+                aliases=['reset_scores', 'resetscores', "ResetScores", "resetScores", 'reset_scoreboard', 'resetscoreboard', "ResetScoreboard", "wipe", "Wipe"])
 async def resetScoreboard(ctx, *args):
   correct_usage = "Correct usage is s!resetScores [scoreboard]"
   try:
     scoreboard_name = args[0]
-  except ValueError:
+  except IndexError:
     await ctx.send("Something went wrong!\n" + correct_usage)
     return
 
@@ -264,6 +312,64 @@ async def resetScoreboard(ctx, *args):
     json.dump(scoreboards, scoreboards_orig)
 
   await ctx.send(f"Reset all values in {scoreboard_name} to 0.")
+
+@client.command(name='list',
+                description="Lists all scoreboards.\n\nCorrect usage is s!list",
+                brief="Lists all scoreboards.",
+                aliases=[])
+async def list(ctx, *args):
+  correct_usage = "Correct usage is s!list"
+
+  with open('scoreboards.txt', "r") as scoreboards_orig:
+    scoreboards = json.load(scoreboards_orig)
+    cur_scoreboards = scoreboards[str(ctx.message.guild.id)]
+  
+  scoreboards_display = f"There are currently {len(cur_scoreboards)} scoreboards on this server\n" + "".join([("\n"+scoreboard) for scoreboard in cur_scoreboards])
+  await ctx.send(scoreboards_display)
+
+
+#addMembers
+@client.command(name='addWithRole',
+                description="Add all people with a role to a specified scoreboard.\n\nCorrect usage is s!addWithRole [member] [scoreboard]",
+                brief="Adds someone to scoreboard.",
+                aliases=['AddMembers', 'AddByRole', 'AddWithRole'])
+async def addWithRole(ctx, *args):
+  correct_usage = "Correct usage is s!addWithRole [role] [scoreboard]"
+  try:
+    role, scoreboard_name = args
+  except ValueError:
+    await ctx.send("Something went wrong!\n" + correct_usage)
+    return
+
+  with open('scoreboards.txt', "r") as scoreboards_orig:
+
+
+    scoreboards = json.load(scoreboards_orig)
+
+    members_with_role = []
+
+    role_id = "".join([i for i in role if i not in ["<", ">", "@", "&"]])
+
+    for member in ctx.message.guild.members:
+      for cur_role in member.roles:
+        if role == cur_role.name or role_id == str(cur_role.id):
+          members_with_role.append(member.name)
+          break
+    
+    try:
+      for member in members_with_role:
+
+        if member in scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"].keys():
+          continue
+        scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][member] = 0
+    except KeyError:
+        await ctx.send(f"The scoreboard {scoreboard_name} does not exist.")
+        return
+
+  with open('scoreboards.txt', "w") as scoreboards_orig:
+    json.dump(scoreboards, scoreboards_orig)
+
+  await ctx.send(f'Added all members with the role {role} to {scoreboard_name}')
 
 keep_alive()
 token = os.environ.get("DISCORD_BOT_SECRET")
