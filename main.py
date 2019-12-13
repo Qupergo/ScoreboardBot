@@ -5,10 +5,9 @@ import discord
 from discord import Activity, ActivityType, Embed
 from discord.ext.commands import Bot
 from keep_alive import keep_alive
-
-
 import dbl
 from discord.ext import commands
+
 
 class TopGG(commands.Cog):
     """Handles interactions with the top.gg API"""
@@ -24,7 +23,6 @@ class TopGG(commands.Cog):
 DISCORD_MESSAGE_PREFIX = ["s!", "<@641229153433288724>", "s! ", "<@641229153433288724> "]
 
 client = Bot(command_prefix=DISCORD_MESSAGE_PREFIX)
-
 
 @client.event
 async def on_ready():
