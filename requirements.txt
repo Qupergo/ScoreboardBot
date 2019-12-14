@@ -1,6 +1,6 @@
-discord.py
+discord.py>=1.2.5
 flask
-aiohttp
+aiohttp<3.6.0,>=3.3.0
 asyncio
 python-dotenv
 dblpy
