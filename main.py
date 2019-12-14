@@ -113,7 +113,7 @@ async def member(ctx, *args):
         for cur_member in ctx.message.guild.members:
           for cur_role in cur_member.roles:
             if role == cur_role:
-              members_to_interact.append(cur_member.name)
+              members_to_interact.append(cur_member)
               break
 
       # Else only a single member should be interacted with
@@ -138,22 +138,37 @@ async def member(ctx, *args):
 
   with open('scoreboards.txt', "w") as scoreboards_orig:
     json.dump(scoreboards, scoreboards_orig)
-  if option.lower() == "remove":
 
+  if option.lower() == "remove":
     await ctx.send(f'removed {member} from {scoreboard_name}')
 
   elif option.lower() == "add":
-    await ctx.send(f"removed {member} to {scoreboard_name}")
+    await ctx.send(f"added {member} to {scoreboard_name}")
 
+#addMember (deprecated)
+@client.command(name='addMember',
+                description="Previously added a member to a scoreboard, now use s!member add",
+                brief="Use s!member add [member|role] [scoreboard]",
+                aliases=['add_m', 'addmember', 'AddMember'])
+async def addMember(ctx):
+  await ctx.send("This command has been replaced with\ns!member add [member|role] [scoreboard]")
+
+#removeMember (deprecated)
+@client.command(name='removeMember',
+                description="Previously removed a member from a scoreboard, now use s!member remove",
+                brief="Use s!member remove [member|role] [scoreboard]",
+                aliases=['remove_m', 'rm', 'removemember', 'RemoveMember'])
+async def removeMember(ctx):
+  await ctx.send("This command has been replaced with\ns!member remove [member|role] [scoreboard]")
 
 #addPoints
 @client.command(name='addPoints',
                 description="Adds points to someone on a specified scoreboard.\n\nCorrect usage is s!addPoints [member] [scoreboard] [points]",
                 brief="Adds points to someone.",
-                aliases=['add_p', 'addP', "addpoints"])
+                aliases=['add_p', 'addP', "addpoints", 'addp'])
 async def addPoints(ctx, *args):
 
-  correct_usage = "Correct usage is s!addMember [member] [scoreboard] [points]"
+  correct_usage = "Correct usage is s!addPoints [member] [scoreboard] [points]"
   try:
     member, scoreboard_name, points = args
   except ValueError:
@@ -210,7 +225,7 @@ async def removePoints(ctx, *args):
 
 #show
 @client.command(name='show',
-                description="Shows a scoreboard.\n\nCorrect usage is s!show [scoreboard]",
+                description="Shows a scoreboard.\n\nCorrect usage is s!show [scoreboard] [page_number]",
                 brief="Shows a scoreboard.",
                 aliases=['Show'])
 async def show(ctx, *args):
