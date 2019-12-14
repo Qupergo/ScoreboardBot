@@ -7,7 +7,9 @@ from discord.ext.commands import Bot
 from keep_alive import keep_alive
 import dbl
 from discord.ext import commands
+from dotenv import load_dotenv
 
+load_dotenv()
 
 class TopGG(commands.Cog):
     """Handles interactions with the top.gg API"""
