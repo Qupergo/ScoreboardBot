@@ -36,7 +36,7 @@ async def on_ready():
         scoreboards[guild.id] = {}
 
   with open('scoreboards.txt', "w") as scoreboards_orig:
-    json.dump(scoreboards, scoreboards_orig)
+    json.dump(scoreboards, scoreboards_orig, indent=4)
 
 
 @client.event
@@ -51,7 +51,7 @@ async def on_guild_join(guild):
           scoreboards[guild.id] = {}
 
     with open('scoreboards.txt', "w") as scoreboards_orig:
-      json.dump(scoreboards, scoreboards_orig)
+      json.dump(scoreboards, scoreboards_orig, indent=4)
 
 
 #invite
@@ -84,7 +84,7 @@ async def create(ctx, *args):
     scoreboards[str(ctx.message.guild.id)] = cur_scoreboards
 
   with open('scoreboards.txt', "w") as scoreboards_orig:
-    json.dump(scoreboards, scoreboards_orig)
+    json.dump(scoreboards, scoreboards_orig, indent=4)
   await ctx.send('Created a scoreboard with the name ' + scoreboard_name)
 
 #Member
@@ -137,7 +137,7 @@ async def member(ctx, *args):
         return
 
   with open('scoreboards.txt', "w") as scoreboards_orig:
-    json.dump(scoreboards, scoreboards_orig)
+    json.dump(scoreboards, scoreboards_orig, indent=4)
 
   if option.lower() == "remove":
     await ctx.send(f'removed {member} from {scoreboard_name}')
@@ -186,7 +186,7 @@ async def addPoints(ctx, *args):
       return
 
   with open('scoreboards.txt', "w") as scoreboards_orig:
-    json.dump(scoreboards, scoreboards_orig)
+    json.dump(scoreboards, scoreboards_orig, indent=4)
 
   if points == "1":
     await ctx.send(f'Added 1 point to {member}, new score is {new_score}.')
@@ -216,7 +216,7 @@ async def removePoints(ctx, *args):
       await ctx.send(f"{member} does not seem to exist in {scoreboard_name}.\n{correct_usage}")
 
   with open('scoreboards.txt', "w") as scoreboards_orig:
-    json.dump(scoreboards, scoreboards_orig)
+    json.dump(scoreboards, scoreboards_orig, indent=4)
 
   if points == "1":
     await ctx.send(f'Removed 1 point from {member}, new score is {new_score}.')
@@ -320,7 +320,7 @@ async def resetScoreboard(ctx, *args):
       scoreboard["participants_scores"][key] = 0
 
   with open('scoreboards.txt', "w") as scoreboards_orig:
-    json.dump(scoreboards, scoreboards_orig)
+    json.dump(scoreboards, scoreboards_orig, indent=4)
 
   await ctx.send(f"Reset all values in {scoreboard_name} to 0.")
 
