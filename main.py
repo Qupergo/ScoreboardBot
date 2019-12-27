@@ -15,8 +15,6 @@ DISCORD_MESSAGE_PREFIX = ["s!", "<@641229153433288724>", "s! ", "<@6412291534332
 
 client = Bot(command_prefix=DISCORD_MESSAGE_PREFIX)
 
-async def on_message()
-
 @client.event
 async def on_ready():
   print("Im in")
@@ -339,9 +337,47 @@ async def list(ctx, *args):
   scoreboards_display = f"There are currently {len(cur_scoreboards)} scoreboards on this server\n" + "".join([("\n"+scoreboard) for scoreboard in cur_scoreboards])
   await ctx.send(scoreboards_display)
 
+
+
+
+
+#removeScoreboard
+@client.command(name='removeScoreboard',
+                description="Removes a specified scoreboard.\n\nCorrect usage is s!removeScoreboard [scoreboard]",
+                brief="Removes a scoreboard",
+                aliases=['RemoveScoreboard', "removescoreboard"])
+async def removeScoreboard(ctx, *args):
+  correct_usage = "Correct usage is s!removeScoreboard [scoreboard]"
+  try:
+    scoreboard_name = args[0]
+  except IndexError:
+    await ctx.send("Something went wrong!\n" + correct_usage)
+    return
+
+  with open('scoreboards.txt', "r") as scoreboards_orig:
+
+    # Load scoreboard
+    scoreboards = json.load(scoreboards_orig)
+    scoreboard = []
+    try:
+      # Find scoreboard
+      del scoreboards[str(ctx.message.guild.id)][scoreboard_name]
+    except KeyError:
+      # If the key can't be found
+      await ctx.send("That scoreboard does not seem to exist.")
+      return
+
+  with open('scoreboards.txt', "w") as scoreboards_orig:
+    json.dump(scoreboards, scoreboards_orig, indent=4)
+
+  await ctx.send(f"Removed {scoreboard_name}.")
+
+
+
 async def hasPermission(executingMember, command, scoreboard):
 
     pass
 
 token = os.environ.get("DISCORD_BOT_SECRET")
+
 client.run(token)
