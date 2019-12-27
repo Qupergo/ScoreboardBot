@@ -15,6 +15,8 @@ DISCORD_MESSAGE_PREFIX = ["s!", "<@641229153433288724>", "s! ", "<@6412291534332
 
 client = Bot(command_prefix=DISCORD_MESSAGE_PREFIX)
 
+async def on_message()
+
 @client.event
 async def on_ready():
   print("Im in")
@@ -59,10 +61,9 @@ async def on_guild_join(guild):
                 description="Gives you the link to add this bot to a server.",
                 brief="Gives you the link to this bot.",
                 aliases=['link'])
-async def link(ctx):
+async def invite(ctx):
   await ctx.send('Here you go!')
   await ctx.send('<https://discordapp.com/oauth2/authorize?&client_id=641229153433288724&scope=bot&permissions=0>')
-
 
 #create
 @client.command(name='create',
