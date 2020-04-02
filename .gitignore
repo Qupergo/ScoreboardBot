@@ -1,3 +1,5 @@
 .env
 scoreboards.txt
 .env
+scoreboards.txt
+*.txt

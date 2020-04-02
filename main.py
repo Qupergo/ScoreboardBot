@@ -39,6 +39,17 @@ async def on_ready():
     json.dump(scoreboards, scoreboards_orig)
 
 
+
+
+def check_permissions(ctx, *args):
+  permissions = ctx.message.channel.permissions_for(ctx.message.author)
+  print(permissions)
+  print(args)
+  if permissions.administrator or permissions.ban_members or permissions.manage_servers or permissions.manage_guild:
+    return True
+  
+  return False
+
 @client.event
 async def on_guild_join(guild):
     await client.change_presence(activity=Activity(name=f" scoreboards on {len(client.guilds)} servers", type=ActivityType.watching))
@@ -52,6 +63,8 @@ async def on_guild_join(guild):
 
     with open('scoreboards.txt', "w") as scoreboards_orig:
       json.dump(scoreboards, scoreboards_orig)
+
+
 
 
 #invite
@@ -69,6 +82,7 @@ async def link(ctx):
                 description="Creates a scoreboard.\n\nCorrect usage is s!create [scoreboard]",
                 brief="Creates a scoreboard.",
                 aliases=[' create'])
+@commands.check(check_permissions)
 async def create(ctx, *args):
   correct_usage = "Correct usage is s!create [scoreboard]"
   try:
@@ -89,11 +103,11 @@ async def create(ctx, *args):
 
 #Member
 @client.command(name='member',
-                description="Adds or removes members in a scoreboard\n\nCorrect usage is s!Member add|remove [member|role] [scoreboard_name]",
+                description="Adds or removes members in a scoreboard\n\nCorrect usage is s!member (add/remove) [member/role] [scoreboard_name]",
                 brief="Interacts with the members in a scoreboard.",
                 aliases=['Member', 'mem', 'Mem'])
 async def member(ctx, *args):
-  correct_usage = "Correct usage is s!Member add|remove [member|role] [scoreboard_name]"
+  correct_usage = "Correct usage is s!member (add/remove) [member/role] [scoreboard_name]"
   try:
     option, member, scoreboard_name = args
   except ValueError:
@@ -121,6 +135,12 @@ async def member(ctx, *args):
         members_to_interact = [member]
 
       for cur_member in members_to_interact:
+      
+        #For some reason, discord adds ! to mentions sometimes
+        #This will then count as different people, even though they mention the same person
+        #So just default it to <@user_id> instead of <@!user_id>
+        if isinstance(cur_member, discord.member.Member):
+          cur_member = "<@" + cur_member.id + ">"
 
         if option.lower() == "add":
           # If the member is already in the scoreboard, don't add them again
@@ -145,21 +165,61 @@ async def member(ctx, *args):
   elif option.lower() == "add":
     await ctx.send(f"added {member} to {scoreboard_name}")
 
-#addMember (deprecated)
-@client.command(name='addMember',
-                description="Previously added a member to a scoreboard, now use s!member add",
-                brief="Use s!member add [member|role] [scoreboard]",
-                aliases=['add_m', 'addmember', 'AddMember'])
-async def addMember(ctx):
-  await ctx.send("This command has been replaced with\ns!member add [member|role] [scoreboard]")
 
-#removeMember (deprecated)
-@client.command(name='removeMember',
-                description="Previously removed a member from a scoreboard, now use s!member remove",
-                brief="Use s!member remove [member|role] [scoreboard]",
-                aliases=['remove_m', 'rm', 'removemember', 'RemoveMember'])
-async def removeMember(ctx):
-  await ctx.send("This command has been replaced with\ns!member remove [member|role] [scoreboard]")
+@client.command(name='test',
+                description="test",
+                brief="test",
+                aliases=['t'])
+async def test(ctx, *args):
+    for cur_member in ctx.message.guild.members:
+      if isinstance(cur_member, discord.member.Member):
+        print(cur_member.id)
+
+
+@client.command(name='points',
+                description="Manages someones points on a specified scoreboard. You can add points to all members with a certain role as well\n\nCorrect usage is s!points (add/remove/set) [member/role] [scoreboard_name] [points]",
+                brief="Adds points to someone.",
+                aliases=['point', 'p'])
+async def points(ctx, *args):
+  correct_usage = 'Correct usage is s!points (add/remove/set) [member/role] [scoreboard_name] [points]'
+
+  #Get user input
+  try:
+    option, member, scoreboard_name, points = args
+  except ValueError:
+    await ctx.send("Something went wrong!\n" + correct_usage)
+    return
+  
+  #Option should be either add, remove or set
+  #Otherwise throw error
+  if option not in ["add", "remove", "set"]:
+    await ctx.send("Incorrect option for s!points, " + option + "\nPlease use either add, remove or set\n" + correct_usage)
+    return
+  
+  with open('scoreboards.txt', "r") as scoreboards_orig:
+
+    scoreboards = json.load(scoreboards_orig)
+    allScoreboardMembers = scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"].keys()
+
+    #Check if a role has been mentioned
+    roles = ctx.message.role_mentions
+    membersAffected = []
+
+    
+    if len(roles) > 0:
+      #Add all members with the role to membersAffected
+      role = roles[0]
+      for cur_member in allScoreboardMembers:
+        print(cur_member)
+        for cur_role in cur_member.roles:
+          if role == cur_role:
+            membersAffected.append(cur_member)
+            break
+      
+
+
+
+
 
 #addPoints
 @client.command(name='addPoints',
@@ -225,11 +285,11 @@ async def removePoints(ctx, *args):
 
 #show
 @client.command(name='show',
-                description="Shows a scoreboard.\n\nCorrect usage is s!show [scoreboard] [page_number]",
+                description="Shows a scoreboard.\n\nCorrect usage is s!show [scoreboard] <page_number>",
                 brief="Shows a scoreboard.",
                 aliases=['Show'])
 async def show(ctx, *args):
-  correct_usage = "Correct usage is s!show [scoreboard] [page_number]"
+  correct_usage = "Correct usage is s!show [scoreboard] <page_number>"
   page_number = 1
   try:
     scoreboard_name = args[0]
@@ -324,10 +384,12 @@ async def resetScoreboard(ctx, *args):
 
   await ctx.send(f"Reset all values in {scoreboard_name} to 0.")
 
+
 @client.command(name='list',
                 description="Lists all scoreboards.\n\nCorrect usage is s!list",
                 brief="Lists all scoreboards.",
                 aliases=[])
+@commands.check(check_permissions)
 async def list(ctx, *args):
   correct_usage = "Correct usage is s!list"
 
@@ -338,9 +400,26 @@ async def list(ctx, *args):
   scoreboards_display = f"There are currently {len(cur_scoreboards)} scoreboards on this server\n" + "".join([("\n"+scoreboard) for scoreboard in cur_scoreboards])
   await ctx.send(scoreboards_display)
 
-async def hasPermission(executingMember, command, scoreboard):
 
-    pass
+
+#Deprecated functions
+
+#addMember (deprecated)
+@client.command(name='addMember',
+                description="Previously added a member to a scoreboard, now use s!member add",
+                brief="Use s!member add [member|role] [scoreboard]",
+                aliases=['add_m', 'addmember', 'AddMember'])
+async def addMember(ctx):
+  await ctx.send("This command has been replaced with\ns!member add [member|role] [scoreboard]")
+
+#removeMember (deprecated)
+@client.command(name='removeMember',
+                description="Previously removed a member from a scoreboard, now use s!member remove",
+                brief="Use s!member remove [member|role] [scoreboard]",
+                aliases=['remove_m', 'rm', 'removemember', 'RemoveMember'])
+async def removeMember(ctx):
+  await ctx.send("This command has been replaced with\ns!member remove [member|role] [scoreboard]")
+
 
 token = os.environ.get("DISCORD_BOT_SECRET")
 client.run(token)
