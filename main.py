@@ -65,8 +65,6 @@ async def on_guild_join(guild):
       json.dump(scoreboards, scoreboards_orig, indent=4)
 
 
-
-
 #invite
 @client.command(name='invite',
                 description="Gives you the link to add this bot to a server.",
@@ -433,7 +431,6 @@ async def removeScoreboard(ctx, *args):
     json.dump(scoreboards, scoreboards_orig, indent=4)
 
   await ctx.send(f"Removed {scoreboard_name}.")
-
 
 
 #Deprecated functions
