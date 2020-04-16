@@ -39,15 +39,12 @@ async def on_ready():
     json.dump(scoreboards, scoreboards_orig, indent=4)
 
 
-
-
 def check_permissions(ctx, *args):
   permissions = ctx.message.channel.permissions_for(ctx.message.author)
   print(permissions)
   print(args)
   if permissions.administrator or permissions.ban_members or permissions.manage_servers or permissions.manage_guild:
     return True
-  
   return False
 
 @client.event
@@ -79,7 +76,7 @@ async def invite(ctx):
                 description="Creates a scoreboard.\n\nCorrect usage is s!create [scoreboard]",
                 brief="Creates a scoreboard.",
                 aliases=[' create'])
-@commands.check(check_permissions)
+#@commands.check(check_permissions)
 async def create(ctx, *args):
   correct_usage = "Correct usage is s!create [scoreboard]"
   try:
@@ -137,7 +134,7 @@ async def member(ctx, *args):
         #This will then count as different people, even though they mention the same person
         #So just default it to <@user_id> instead of <@!user_id>
         if isinstance(cur_member, discord.member.Member):
-          cur_member = "<@" + cur_member.id + ">"
+          cur_member = "<@" + str(cur_member.id) + ">"
 
         if option.lower() == "add":
           # If the member is already in the scoreboard, don't add them again
@@ -163,26 +160,18 @@ async def member(ctx, *args):
     await ctx.send(f"added {member} to {scoreboard_name}")
 
 
-@client.command(name='test',
-                description="test",
-                brief="test",
-                aliases=['t'])
-async def test(ctx, *args):
-    for cur_member in ctx.message.guild.members:
-      if isinstance(cur_member, discord.member.Member):
-        print(cur_member.id)
-
-
 @client.command(name='points',
                 description="Manages someones points on a specified scoreboard. You can add points to all members with a certain role as well\n\nCorrect usage is s!points (add/remove/set) [member/role] [scoreboard_name] [points]",
                 brief="Adds points to someone.",
                 aliases=['point', 'p'])
+#@commands.check(check_permissions)
 async def points(ctx, *args):
   correct_usage = 'Correct usage is s!points (add/remove/set) [member/role] [scoreboard_name] [points]'
 
   #Get user input
   try:
     option, member, scoreboard_name, points = args
+    points = int(points)
   except ValueError:
     await ctx.send("Something went wrong!\n" + correct_usage)
     return
@@ -207,15 +196,50 @@ async def points(ctx, *args):
       #Add all members with the role to membersAffected
       role = roles[0]
       for cur_member in allScoreboardMembers:
-        print(cur_member)
+        for server_member in ctx.message.guild.members:
+          if cur_member == ("<@" + str(server_member.id) + ">"):
+            cur_member = server_member
+            break
+        else:
+          continue
+
+
+
         for cur_role in cur_member.roles:
           if role == cur_role:
             membersAffected.append(cur_member)
             break
+    else:
+      membersAffected = [member]
+
+    for cur_member in membersAffected:
+      if isinstance(cur_member, discord.member.Member):
+        cur_member = "<@" + str(cur_member.id) + ">"
       
+      try:
+        scoreboards[str(ctx.message.guild.id)][scoreboard_name]
+      except KeyError:
+        await ctx.send(f"The scoreboard *{scoreboard_name}* does not seem to exist\n" + correct_usage)
+        return
 
+      try:
+        if option == "add":
+          scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][cur_member] += points
+        elif option == "remove":
+          scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][cur_member] -= points
+        elif option == "set":
+          scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][cur_member] = points
+      except KeyError:
+        # If a member is not on the scoreboard just continue, this should not happen but it is not the users fault
+        continue
 
-
+      try:
+        with open('scoreboards.txt', "w") as scoreboards_orig:
+          json.dump(scoreboards, scoreboards_orig, indent=4)
+      except:
+        await ctx.send("Internal server error, count to 10 and try again")
+        
+    await ctx.send("Success!")
 
 
 #addPoints
@@ -352,6 +376,7 @@ async def show(ctx, *args):
                 description="Resets all scores on a specified scoreboard.\n\nCorrect usage is s!resetScores [scoreboard]",
                 brief="Resets all scores on a specified scoreboard",
                 aliases=['reset_scores', 'resetscores', "ResetScores", "resetScores", 'reset_scoreboard', 'resetscoreboard', "ResetScoreboard", "wipe", "Wipe"])
+#@commands.check(check_permissions)
 async def resetScoreboard(ctx, *args):
   correct_usage = "Correct usage is s!resetScores [scoreboard]"
   try:
@@ -386,7 +411,7 @@ async def resetScoreboard(ctx, *args):
                 description="Lists all scoreboards.\n\nCorrect usage is s!list",
                 brief="Lists all scoreboards.",
                 aliases=[])
-@commands.check(check_permissions)
+#@commands.check(check_permissions)
 async def list(ctx, *args):
   correct_usage = "Correct usage is s!list"
 
