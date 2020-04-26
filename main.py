@@ -15,6 +15,23 @@ DISCORD_MESSAGE_PREFIX = ["s!", "<@641229153433288724>", "s! ", "<@6412291534332
 
 client = Bot(command_prefix=DISCORD_MESSAGE_PREFIX)
 
+class TopGG(commands.Cog):
+    """Handles interactions with the top.gg API"""
+
+    def __init__(self, bot):
+        self.bot = bot
+        self.token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY0MTIyOTE1MzQzMzI4ODcyNCIsImJvdCI6dHJ1ZSwiaWF0IjoxNTc2MTYzNzk4fQ._imK5bBS2eeLyIXiolADEfeyTliaTrHYI-B05ECV58Q' # set this to your DBL token
+        self.dblpy = dbl.DBLClient(self.bot, self.token, autopost=True) # Autopost will post your guild count every 30 minutes
+
+    async def on_guild_post():
+        print("Server count posted successfully")
+
+def setup(bot):
+    bot.add_cog(TopGG(bot))
+
+
+# TODO: Prefix function
+
 @client.event
 async def on_ready():
   print("Im in")
@@ -41,8 +58,7 @@ async def on_ready():
 
 def check_permissions(ctx, *args):
   permissions = ctx.message.channel.permissions_for(ctx.message.author)
-  print(permissions)
-  print(args)
+
   if permissions.administrator or permissions.ban_members or permissions.manage_servers or permissions.manage_guild:
     return True
   return False
@@ -191,7 +207,6 @@ async def points(ctx, *args):
     roles = ctx.message.role_mentions
     membersAffected = []
 
-    
     if len(roles) > 0:
       #Add all members with the role to membersAffected
       role = roles[0]
@@ -202,15 +217,17 @@ async def points(ctx, *args):
             break
         else:
           continue
-
-
-
         for cur_role in cur_member.roles:
           if role == cur_role:
             membersAffected.append(cur_member)
             break
     else:
-      membersAffected = [member]
+      # If only a single user is mentioned
+      user = client.get_user(int(''.join(c for c in member if c.isdigit())))
+      if user == None:
+        membersAffected = [member]
+      else:
+        membersAffected = ["<@" + str(user.id) + ">"]
 
     for cur_member in membersAffected:
       if isinstance(cur_member, discord.member.Member):
@@ -221,7 +238,6 @@ async def points(ctx, *args):
       except KeyError:
         await ctx.send(f"The scoreboard *{scoreboard_name}* does not seem to exist\n" + correct_usage)
         return
-
       try:
         if option == "add":
           scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][cur_member] += points
@@ -238,8 +254,14 @@ async def points(ctx, *args):
           json.dump(scoreboards, scoreboards_orig, indent=4)
       except:
         await ctx.send("Internal server error, count to 10 and try again")
-        
-    await ctx.send("Success!")
+      
+    if option == "add":
+      await ctx.send(f"Successfully added {points} point(s) to {member}")
+    elif option == "remove":
+      await ctx.send(f"Successfully removed {points} point(s) from {member}")
+    elif option == "set":
+      await ctx.send(f"Successfully set {member} points to {points}")
+
 
 
 #addPoints
@@ -248,6 +270,7 @@ async def points(ctx, *args):
                 brief="Adds points to someone.",
                 aliases=['add_p', 'addP', "addpoints", 'addp'])
 async def addPoints(ctx, *args):
+
 
   correct_usage = "Correct usage is s!addPoints [member] [scoreboard] [points]"
   try:
@@ -340,7 +363,7 @@ async def show(ctx, *args):
       current_page = []
 
       for key, value in member_order:
-        current_page.append(f"{key}\t{':'}\t{value}")
+        current_page.append([key, value])
         iteration += 1
 
         if iteration == members_per_page:
@@ -358,10 +381,75 @@ async def show(ctx, *args):
         await ctx.send(f"Unfortunately, **{scoreboard_name}** is empty, there is nothing to show.")
         return
 
-      embed = Embed(title=f"**{scoreboard_name}**", colour=discord.Colour(900))
+      embed = Embed(title=f"{scoreboard_name}", colour=discord.Colour(900))
 
-      embed.add_field(name="Members", value="\t\n".join(pages[page_number-1]))
+
+      default_table = """
+      ╔m╦p╗
+      ║n0║s0║
+      ╠m╬p╣
+      ║n1║s1║
+      ╠m╬p╣
+      ║n2║s2║
+      ╚m╩p╝
+      """
+      table = ""
+      memberLength = 0
+      pointsLength = 0
+      tableLenghtener = "═"
+      usernames = []
+
+      for index, member_points in enumerate(current_page):
+        member = member_points[0]
+        points = member_points[1]
+
+        # Member is in format <@id>
+        try:
+          user = client.get_user(int(member[2:len(member)-1]))
+        except:
+          pass
+
+        # If user is not found, replace with the member since it is probably not in the format above
+        username = user.name
+        if user == None:
+          username == member
+        
+        usernames.append(username)
+        # Make the length equal the longest name
+        if len(username) > memberLength:
+          memberLength = len(username)
+        
+        if (len(str(points))) > pointsLength:
+          pointsLength = len(str(points))
+        
+        if index == 0:
+          table += "╔m╦p╗\n"
+          table += "║n0║s0║\n"
+          table += "╠m╬p╣\n"
+        elif index == (len(current_page) - 1):
+          table += f"║n{index}║s{index}║\n"
+          table += "╚m╩p╝\n"
+        else:
+          table += f"║n{index}║s{index}║\n"
+          table += "╠m╬p╣\n"
+      
+      # Add 2 spaces to create margin
+      memberLength += 2
+      pointsLength += 2
+      table = table.replace("m", tableLenghtener*memberLength)
+      table = table.replace("p", tableLenghtener*pointsLength)
+
+      for index, member_points in enumerate(current_page):
+        member = member_points[0]
+        points = member_points[1]
+        table = table.replace(f"n{index}", usernames[index].center(memberLength, " "))
+        table = table.replace(f"s{index}", str(points).center(pointsLength, " "))
+
+
+
+      embed.add_field(name="_", value=f"```{table}```", inline=False)
       embed.add_field(name="Page", value=f"{page_number}/{len(pages)}")
+
 
       try:
         await ctx.send(embed=embed)
