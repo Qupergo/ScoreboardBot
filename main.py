@@ -462,7 +462,7 @@ async def show(ctx, *args):
       tableLenghtener = "═"
       current_page.insert(0, ["Member", "Points"])
       usernames = []
-      for index, member_points in enumerate(offset, current_page):
+      for index, member_points in enumerate(current_page, offset):
         member = member_points[0]
         points = member_points[1]
 
@@ -508,7 +508,7 @@ async def show(ctx, *args):
       table = table.replace("p", tableLenghtener*pointsLength)
       
 
-      for index, member_points in enumerate(offset, current_page):
+      for index, member_points in enumerate(current_page, offset):
         member = member_points[0]
         points = member_points[1]
         table = table.replace(f"n{index - offset}", f" {usernames[index - offset]}".ljust(memberLength, " "))
