@@ -11,9 +11,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DISCORD_MESSAGE_PREFIX = ["s!", "<@641229153433288724>", "s! ", "<@641229153433288724> "]
+DEFAULT_MESSAGE_PREFIX = "s!"
 
-client = Bot(command_prefix=DISCORD_MESSAGE_PREFIX)
 
 class TopGG(commands.Cog):
     """Handles interactions with the top.gg API"""
@@ -29,6 +28,36 @@ class TopGG(commands.Cog):
 def setup(bot):
     bot.add_cog(TopGG(bot))
 
+
+def prefix(bot, message):
+    with open('prefixes.json', "r") as prefixFile:
+        prefixes = json.load(prefixFile)
+    return prefixes.get(str(message.guild.id), DEFAULT_MESSAGE_PREFIX)
+
+  
+client = Bot(command_prefix=prefix)
+
+
+@client.command(name='prefix',
+                description="Changes the prefix for the bot",
+                brief="Changes prefix for the bot",
+                aliases=['pre', 'change_prefix', 'changeprefix', 'changePrefix'],
+                pass_context=True)
+async def change_prefix(ctx, *args):
+    if len(args) > 0:
+        new_prefix = args[0]
+
+    
+    with open('prefixes.json', "r") as prefixFile:
+        prefixes = json.load(prefixFile)
+    prefixes[str(ctx.guild.id)] = new_prefix
+
+    with open('prefixes.json', 'w') as prefixFile:
+        json.dump(prefixes, prefixFile, indent=4)
+
+    await ctx.send("Changed prefix to " + new_prefix)
+
+    
 
 # TODO: Prefix function
 
@@ -54,6 +83,16 @@ async def on_ready():
 
   with open('scoreboards.txt', "w") as scoreboards_orig:
     json.dump(scoreboards, scoreboards_orig, indent=4)
+  
+
+  with open('prefixes.json', "r") as prefixFile:
+        prefixes = json.load(prefixFile)
+        for guild in client.guilds:
+            if str(guild.id) not in prefixes.keys():
+                prefixes[str(guild.id)] =  DEFAULT_MESSAGE_PREFIX
+    
+  with open("prefixes.json", "w") as prefixFile:
+      json.dump(prefixes, prefixFile, indent=4)
 
 
 def check_permissions(ctx, *args):
@@ -76,7 +115,16 @@ async def on_guild_join(guild):
 
     with open('scoreboards.txt', "w") as scoreboards_orig:
       json.dump(scoreboards, scoreboards_orig, indent=4)
-
+    
+    
+    with open('prefixes.json', "r") as prefixFile:
+        prefixes = json.load(prefixFile)
+        for guild in client.guilds:
+            if str(guild.id) not in prefixes.keys():
+                prefixes[str(guild.id)] =  DEFAULT_MESSAGE_PREFIX
+    
+    with open("prefixes.json", "w") as prefixFile:
+        json.dump(prefixes, prefixFile, indent=4)
 
 #invite
 @client.command(name='invite',
@@ -385,20 +433,23 @@ async def show(ctx, *args):
 
 
       default_table = """
-      ╔m╦p╗
-      ║n0║s0║
-      ╠m╬p╣
-      ║n1║s1║
-      ╠m╬p╣
-      ║n2║s2║
-      ╚m╩p╝
+      ╔r╦m╦p╗
+      ║l0║n0║s0║
+      ╠r╬m╬p╣
+      ║l1║n1║s1║
+      ╠r╬m╬p╣
+      ║l2║n2║s2║
+      ╚r╩m╩p╝
       """
       table = ""
-      memberLength = 0
-      pointsLength = 0
-      tableLenghtener = "═"
-      usernames = []
+      # This will be the minimum length of each row
+      memberLength = len("member")
+      pointsLength = len("points")
+      rankLength = len("rank")
 
+      tableLenghtener = "═"
+      current_page.insert(0, ["Member", "Points"])
+      usernames = []
       for index, member_points in enumerate(current_page):
         member = member_points[0]
         points = member_points[1]
@@ -407,12 +458,13 @@ async def show(ctx, *args):
         try:
           user = client.get_user(int(member[2:len(member)-1]))
         except:
-          pass
-
+          user = None
         # If user is not found, replace with the member since it is probably not in the format above
-        username = user.name
         if user == None:
-          username == member
+          username = member
+        else:
+          username = "@" + user.name
+
         
         usernames.append(username)
         # Make the length equal the longest name
@@ -423,29 +475,39 @@ async def show(ctx, *args):
           pointsLength = len(str(points))
         
         if index == 0:
-          table += "╔m╦p╗\n"
-          table += "║n0║s0║\n"
-          table += "╠m╬p╣\n"
+          table += "╔r╦m╦p╗\n"
+          table += "║l0║n0║s0║\n"
+          table += "╠r╬m╬p╣\n"
         elif index == (len(current_page) - 1):
-          table += f"║n{index}║s{index}║\n"
-          table += "╚m╩p╝\n"
+          table += f"║l{index}║n{index}║s{index}║\n"
+          table += "╚r╩m╩p╝\n"
         else:
-          table += f"║n{index}║s{index}║\n"
-          table += "╠m╬p╣\n"
+          table += f"║l{index}║n{index}║s{index}║\n"
+          table += "╠r╬m╬p╣\n"
       
       # Add 2 spaces to create margin
-      memberLength += 2
-      pointsLength += 2
+      margin = 2
+      memberLength += margin 
+      pointsLength += margin
+      rankLength += margin
+      
+      table = table.replace("r", tableLenghtener*rankLength)
       table = table.replace("m", tableLenghtener*memberLength)
       table = table.replace("p", tableLenghtener*pointsLength)
+      
 
       for index, member_points in enumerate(current_page):
         member = member_points[0]
         points = member_points[1]
-        table = table.replace(f"n{index}", usernames[index].center(memberLength, " "))
-        table = table.replace(f"s{index}", str(points).center(pointsLength, " "))
+        table = table.replace(f"n{index}", f" {usernames[index]}".ljust(memberLength, " "))
+        table = table.replace(f"s{index}", f"{str(points)}".center(pointsLength, " "))
 
-
+        if index == 0:
+          table = table.replace(f"l{index}", " Rank".ljust(rankLength, " "))
+      
+        else:
+          table = table.replace(f"l{index}", f" {index}.".ljust(rankLength, " "))
+        
 
       embed.add_field(name="_", value=f"```{table}```", inline=False)
       embed.add_field(name="Page", value=f"{page_number}/{len(pages)}")
