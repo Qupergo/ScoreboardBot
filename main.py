@@ -438,8 +438,8 @@ async def show(ctx, *args):
 
       embed = Embed(title=f"{scoreboard_name}", colour=discord.Colour(900))
 
-      current_page = pages[page_number]
-      
+      current_page = pages[page_number - 1]
+
       default_table = """
       ╔r╦m╦p╗
       ║l0║n0║s0║
