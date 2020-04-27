@@ -196,9 +196,9 @@ async def member(ctx, *args):
         except:
           user = None
         if user == None:
-          membersAffected = [member]
+          members_to_interact = [member]
         else:
-          membersAffected = ["<@" + str(user.id) + ">"]
+          members_to_interact = ["<@" + str(user.id) + ">"]
 
       for cur_member in members_to_interact:
       
@@ -443,7 +443,10 @@ async def show(ctx, *args):
         await ctx.send(f"Unfortunately, **{scoreboard_name}** is empty, there is nothing to show.")
         return
 
-      embed = Embed(title=f"{scoreboard_name}", colour=discord.Colour(0x00FFFF))
+      if page_number == 1:
+        embed = Embed(title=f"{scoreboard_name}", colour=discord.Colour(0x00FFFF))
+      else:
+        embed = Embed(colour=discord.Colour(0x00FFFF))
       embed.add_field(name="Page", value=f"{page_number}/{len(pages)}")
 
       current_page = pages[page_number - 1]
