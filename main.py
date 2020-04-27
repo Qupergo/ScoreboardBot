@@ -271,7 +271,10 @@ async def points(ctx, *args):
             break
     else:
       # If only a single user is mentioned
-      user = client.get_user(int(''.join(c for c in member if c.isdigit())))
+      try:
+        user = client.get_user(int(''.join(c for c in member if c.isdigit())))
+      except:
+        user = None
       if user == None:
         membersAffected = [member]
       else:
@@ -513,10 +516,8 @@ async def show(ctx, *args):
       embed.add_field(name="Page", value=f"{page_number}/{len(pages)}")
 
 
-      try:
-        await ctx.send(embed=embed)
-      except:
-        await ctx.send("I don't have permissions for that.")
+      await ctx.send(embed=embed)
+
 
     except KeyError:
       await ctx.send("That scoreboard does not seem to exist on this server.\n" + correct_usage)
