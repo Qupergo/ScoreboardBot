@@ -437,6 +437,7 @@ async def show(ctx, *args):
         return
 
       embed = Embed(title=f"{scoreboard_name}", colour=discord.Colour(0x00FFFF))
+      embed.add_field(name="Page", value=f"{page_number}/{len(pages)}")
 
       current_page = pages[page_number - 1]
 
@@ -468,7 +469,10 @@ async def show(ctx, *args):
 
         # Member is in format <@id>
         try:
-          user = client.get_user(int(member[2:len(member)-1]))
+          if member.startswith('<@'):
+            user = client.get_user(int(member[2:len(member)-1]))
+          else:
+            user = client.get_user(int(member[3:len(member)-1]))
         except:
           user = None
         # If user is not found, replace with the member since it is probably not in the format above
@@ -522,7 +526,6 @@ async def show(ctx, *args):
         
 
       embed.add_field(name="_", value=f"```{table}```", inline=False)
-      embed.add_field(name="Page", value=f"{page_number}/{len(pages)}")
 
 
       await ctx.send(embed=embed)
