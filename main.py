@@ -518,7 +518,7 @@ async def show(ctx, *args):
           table = table.replace(f"l{index}", " Rank".ljust(rankLength, " "))
       
         else:
-          table = table.replace(f"l{index}", f" {index - offset}.".ljust(rankLength, " "))
+          table = table.replace(f"l{index}", f" {(index - offset) + page_number * members_per_page}.".ljust(rankLength, " "))
         
 
       embed.add_field(name="_", value=f"```{table}```", inline=False)
