@@ -46,7 +46,8 @@ client = Bot(command_prefix=prefix)
 async def change_prefix(ctx, *args):
     if len(args) > 0:
         new_prefix = args[0]
-
+    else:
+      await ctx.send("You have to give a new prefix\nCorrect usage is s!prefix [new_prefix]")
     
     with open('prefixes.json', "r") as prefixFile:
         prefixes = json.load(prefixFile)
@@ -395,6 +396,8 @@ async def show(ctx, *args):
   if len(args) > 1:
     try:
       page_number = int(args[1])
+      
+
     except:
       pass
 
@@ -421,6 +424,7 @@ async def show(ctx, *args):
           pages.append(current_page.copy())
           current_page = []
           iteration = 0
+          
 
       if iteration > 0:
         pages.append(current_page)
@@ -434,7 +438,8 @@ async def show(ctx, *args):
 
       embed = Embed(title=f"{scoreboard_name}", colour=discord.Colour(900))
 
-
+      current_page = pages[page_number]
+      
       default_table = """
       ╔r╦m╦p╗
       ║l0║n0║s0║
