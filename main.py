@@ -191,7 +191,14 @@ async def member(ctx, *args):
 
       # Else only a single member should be interacted with
       else:
-        members_to_interact = [member]
+        try:
+          user = client.get_user(int(''.join(c for c in member if c.isdigit())))
+        except:
+          user = None
+        if user == None:
+          membersAffected = [member]
+        else:
+          membersAffected = ["<@" + str(user.id) + ">"]
 
       for cur_member in members_to_interact:
       
@@ -469,10 +476,7 @@ async def show(ctx, *args):
 
         # Member is in format <@id>
         try:
-          if member.startswith('<@'):
-            user = client.get_user(int(member[2:len(member)-1]))
-          else:
-            user = client.get_user(int(member[3:len(member)-1]))
+          user = client.get_user(int(''.join(c for c in member if c.isdigit())))
         except:
           user = None
         # If user is not found, replace with the member since it is probably not in the format above
