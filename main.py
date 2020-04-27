@@ -410,7 +410,7 @@ async def show(ctx, *args):
 
       iteration = 0
       pages = []
-      members_per_page = 20
+      members_per_page = 10
       current_page = []
 
       for key, value in member_order:
@@ -517,6 +517,8 @@ async def show(ctx, *args):
 
 
       await ctx.send(embed=embed)
+      if (len(embed) > 1024):
+        await ctx.send("Scoreboard is too large")
 
 
     except KeyError:
