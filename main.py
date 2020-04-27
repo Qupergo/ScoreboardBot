@@ -442,14 +442,18 @@ async def show(ctx, *args):
 
       default_table = """
       ╔r╦m╦p╗
-      ║l0║n0║s0║
+      ║l1000║n1000║s1000║
       ╠r╬m╬p╣
-      ║l1║n1║s1║
+      ║l1001║n1001║s1001║
       ╠r╬m╬p╣
-      ║l2║n2║s2║
+      ║l1002║n1002║s1002║
       ╚r╩m╩p╝
       """
       table = ""
+
+      # To not have duplicates
+      offset = 1000
+
       # This will be the minimum length of each row
       memberLength = len("member")
       pointsLength = len("points")
@@ -458,7 +462,7 @@ async def show(ctx, *args):
       tableLenghtener = "═"
       current_page.insert(0, ["Member", "Points"])
       usernames = []
-      for index, member_points in enumerate(current_page):
+      for index, member_points in enumerate(offset, current_page):
         member = member_points[0]
         points = member_points[1]
 
@@ -482,15 +486,15 @@ async def show(ctx, *args):
         if (len(str(points))) > pointsLength:
           pointsLength = len(str(points))
         
-        if index == 0:
+        if (index - offset) == 0:
           table += "╔r╦m╦p╗\n"
           table += "║l0║n0║s0║\n"
           table += "╠r╬m╬p╣\n"
-        elif index == (len(current_page) - 1):
-          table += f"║l{index}║n{index}║s{index}║\n"
+        elif (index - offset) == (len(current_page) - 1):
+          table += f"║l{index - offset}║n{index - offset}║s{index - offset}║\n"
           table += "╚r╩m╩p╝\n"
         else:
-          table += f"║l{index}║n{index}║s{index}║\n"
+          table += f"║l{index - offset}║n{index - offset}║s{index - offset}║\n"
           table += "╠r╬m╬p╣\n"
       
       # Add 2 spaces to create margin
@@ -504,17 +508,17 @@ async def show(ctx, *args):
       table = table.replace("p", tableLenghtener*pointsLength)
       
 
-      for index, member_points in enumerate(current_page):
+      for index, member_points in enumerate(offset, current_page):
         member = member_points[0]
         points = member_points[1]
-        table = table.replace(f"n{index}", f" {usernames[index]}".ljust(memberLength, " "))
-        table = table.replace(f"s{index}", f"{str(points)}".center(pointsLength, " "))
+        table = table.replace(f"n{index - offset}", f" {usernames[index - offset]}".ljust(memberLength, " "))
+        table = table.replace(f"s{index - offset}", f"{str(points)}".center(pointsLength, " "))
 
         if index == 0:
-          table = table.replace(f"l{index}", " Rank".ljust(rankLength, " "))
+          table = table.replace(f"l{index - offset}", " Rank".ljust(rankLength, " "))
       
         else:
-          table = table.replace(f"l{index}", f" {index}.".ljust(rankLength, " "))
+          table = table.replace(f"l{index - offset}", f" {index - offset}.".ljust(rankLength, " "))
         
 
       embed.add_field(name="_", value=f"```{table}```", inline=False)
