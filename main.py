@@ -436,7 +436,7 @@ async def show(ctx, *args):
         await ctx.send(f"Unfortunately, **{scoreboard_name}** is empty, there is nothing to show.")
         return
 
-      embed = Embed(title=f"{scoreboard_name}", colour=discord.Colour(900))
+      embed = Embed(title=f"{scoreboard_name}", colour=discord.Colour(0x00FFFF))
 
       current_page = pages[page_number - 1]
 
