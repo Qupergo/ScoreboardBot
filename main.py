@@ -486,7 +486,7 @@ async def show(ctx, *args):
         if (len(str(points))) > pointsLength:
           pointsLength = len(str(points))
         
-        if (index - offset) == offset:
+        if (index - offset) == 0:
           table += f"╔r╦m╦p╗\n"
           table += f"║l{index}║n{index}║s{index}║\n"
           table += f"╠r╬m╬p╣\n"
@@ -514,7 +514,7 @@ async def show(ctx, *args):
         table = table.replace(f"n{index}", f" {usernames[index - offset]}".ljust(memberLength, " "))
         table = table.replace(f"s{index}", f"{str(points)}".center(pointsLength, " "))
 
-        if index == 0:
+        if (index - offset) == 0:
           table = table.replace(f"l{index}", " Rank".ljust(rankLength, " "))
       
         else:
