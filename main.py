@@ -491,10 +491,10 @@ async def show(ctx, *args):
           table += "║l0║n0║s0║\n"
           table += "╠r╬m╬p╣\n"
         elif (index - offset) == (len(current_page) - 1):
-          table += f"║l{index - offset}║n{index - offset}║s{index - offset}║\n"
+          table += f"║l{index}║n{index }║s{index}║\n"
           table += "╚r╩m╩p╝\n"
         else:
-          table += f"║l{index - offset}║n{index - offset}║s{index - offset}║\n"
+          table += f"║l{index}║n{index}║s{index}║\n"
           table += "╠r╬m╬p╣\n"
       
       # Add 2 spaces to create margin
@@ -511,14 +511,14 @@ async def show(ctx, *args):
       for index, member_points in enumerate(current_page, offset):
         member = member_points[0]
         points = member_points[1]
-        table = table.replace(f"n{index - offset}", f" {usernames[index - offset]}".ljust(memberLength, " "))
-        table = table.replace(f"s{index - offset}", f"{str(points)}".center(pointsLength, " "))
+        table = table.replace(f"n{index}", f" {usernames[index - offset]}".ljust(memberLength, " "))
+        table = table.replace(f"s{index}", f"{str(points)}".center(pointsLength, " "))
 
         if index == 0:
-          table = table.replace(f"l{index - offset}", " Rank".ljust(rankLength, " "))
+          table = table.replace(f"l{index}", " Rank".ljust(rankLength, " "))
       
         else:
-          table = table.replace(f"l{index - offset}", f" {index - offset}.".ljust(rankLength, " "))
+          table = table.replace(f"l{index}", f" {index - offset}.".ljust(rankLength, " "))
         
 
       embed.add_field(name="_", value=f"```{table}```", inline=False)
