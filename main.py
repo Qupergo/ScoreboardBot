@@ -487,9 +487,9 @@ async def show(ctx, *args):
           pointsLength = len(str(points))
         
         if (index - offset) == 0:
-          table += "╔r╦m╦p╗\n"
-          table += "║l0║n0║s0║\n"
-          table += "╠r╬m╬p╣\n"
+          table += f"╔r╦m╦p╗\n"
+          table += f"║l{index}║n{index}║s{index}║\n"
+          table += f"╠r╬m╬p╣\n"
         elif (index - offset) == (len(current_page) - 1):
           table += f"║l{index}║n{index }║s{index}║\n"
           table += "╚r╩m╩p╝\n"
