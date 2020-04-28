@@ -88,10 +88,10 @@ async def on_ready():
       largestGuildName = guild.name
     iteration += 1
 
-  print("This bot is used by a total of: " + memberSum + " members")
-  print("The largest server this bot is on has " + highestGuildMemberCount + " members")
-  print("This server is called: " + largestGuildName)
-  print("Current amount of servers: " + iteration)
+  print(f"This bot is used by a total of: {memberSum} members")
+  print(f"The largest server this bot is on has {highestGuildMemberCount} members")
+  print(f"This server is called: {largestGuildName}")
+  print(f"Current amount of servers: {iteration}")
   
   await client.change_presence(activity=Activity(name=f" scoreboards on {len(guilds)} servers", type=ActivityType.watching))
 
