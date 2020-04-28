@@ -34,20 +34,32 @@ def prefix(bot, message):
         prefixes = json.load(prefixFile)
     return prefixes.get(str(message.guild.id), DEFAULT_MESSAGE_PREFIX)
 
-  
+
 client = Bot(command_prefix=prefix)
+client.remove_command('help')
+
+
+async def check_permissions(ctx, *args):
+  permissions = ctx.message.channel.permissions_for(ctx.message.author)
+  hasPermission = False
+  if "scorekeeper" in [role.name.lower() for role in ctx.message.author.roles]:
+    hasPermission = True
+
+  if permissions.administrator or hasPermission:
+    return True
+  await ctx.send(":x: This command requires you to either have a role named `Scorekeeper` or be an `Administrator` to use it")
+  return False
 
 
 @client.command(name='prefix',
-                description="Changes the prefix for the bot",
-                brief="Changes prefix for the bot",
                 aliases=['pre', 'change_prefix', 'changeprefix', 'changePrefix'],
                 pass_context=True)
+@commands.check(check_permissions)
 async def change_prefix(ctx, *args):
     if len(args) > 0:
         new_prefix = args[0]
     else:
-      await ctx.send("You have to give a new prefix\nCorrect usage is s!prefix [new_prefix]")
+      await ctx.send("You have to give a new prefix\nCorrect usage is `s!prefix [new_prefix]`")
     
     with open('prefixes.json', "r") as prefixFile:
         prefixes = json.load(prefixFile)
@@ -56,11 +68,9 @@ async def change_prefix(ctx, *args):
     with open('prefixes.json', 'w') as prefixFile:
         json.dump(prefixes, prefixFile, indent=4)
 
-    await ctx.send("Changed prefix to " + new_prefix)
+    await ctx.send(":white_check_mark: Changed prefix to " + new_prefix)
 
     
-
-# TODO: Prefix function
 
 @client.event
 async def on_ready():
@@ -95,13 +105,6 @@ async def on_ready():
   with open("prefixes.json", "w") as prefixFile:
       json.dump(prefixes, prefixFile, indent=4)
 
-
-def check_permissions(ctx, *args):
-  permissions = ctx.message.channel.permissions_for(ctx.message.author)
-
-  if permissions.administrator or permissions.ban_members or permissions.manage_servers or permissions.manage_guild:
-    return True
-  return False
 
 @client.event
 async def on_guild_join(guild):
@@ -138,16 +141,14 @@ async def invite(ctx):
 
 #create
 @client.command(name='create',
-                description="Creates a scoreboard.\n\nCorrect usage is s!create [scoreboard]",
-                brief="Creates a scoreboard.",
                 aliases=[' create'])
-#@commands.check(check_permissions)
+@commands.check(check_permissions)
 async def create(ctx, *args):
-  correct_usage = "Correct usage is s!create [scoreboard]"
+  correct_usage = "Correct usage is `s!create [scoreboard]`"
   try:
     scoreboard_name = args[0]
   except IndexError:
-    await ctx.send("Something went wrong!\n" + correct_usage)
+    await ctx.send(":x: Not enough arguments.\n" + correct_usage)
     return
 
   with open('scoreboards.txt', "r") as scoreboards_orig:
@@ -158,19 +159,22 @@ async def create(ctx, *args):
 
   with open('scoreboards.txt', "w") as scoreboards_orig:
     json.dump(scoreboards, scoreboards_orig, indent=4)
-  await ctx.send('Created a scoreboard with the name ' + scoreboard_name)
+  await ctx.send(f':white_check_mark: Created a scoreboard with the name {scoreboard_name}')
 
 #Member
 @client.command(name='member',
-                description="Adds or removes members in a scoreboard\n\nCorrect usage is s!member (add/remove) [member/role] [scoreboard_name]",
-                brief="Interacts with the members in a scoreboard.",
                 aliases=['Member', 'mem', 'Mem'])
+@commands.check(check_permissions)
 async def member(ctx, *args):
-  correct_usage = "Correct usage is s!member (add/remove) [member/role] [scoreboard_name]"
+  correct_usage = "Correct usage is `s!member (add/remove) [member/role] [scoreboard_name]`"
   try:
     option, member, scoreboard_name = args
   except ValueError:
-    await ctx.send("Something went wrong!\n" + correct_usage)
+    await ctx.send(":x: Not enough arguments\n" + correct_usage)
+    return
+
+  if option.lower() not in ['add', 'remove']:
+    await ctx.send("Incorrect option for `s!add`. Use either `add` or `remove`\n" + correct_usage)
     return
 
   with open('scoreboards.txt', "r") as scoreboards_orig:
@@ -213,45 +217,41 @@ async def member(ctx, *args):
           if cur_member in scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"].keys():
             continue
           scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][cur_member] = 0
-
         elif option.lower() == "remove":
           del scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][cur_member]
-        else:
-          await ctx.send("Something went wrong!\n" + correct_usage)
+
     except KeyError:
-        await ctx.send(f"The scoreboard {scoreboard_name} does not exist.")
+        await ctx.send(f":x: The scoreboard `{scoreboard_name}` does not exist.")
         return
 
   with open('scoreboards.txt', "w") as scoreboards_orig:
     json.dump(scoreboards, scoreboards_orig, indent=4)
 
   if option.lower() == "remove":
-    await ctx.send(f'removed {member} from {scoreboard_name}')
+    await ctx.send(f':white_check_mark: removed {member} from `{scoreboard_name}`')
 
   elif option.lower() == "add":
-    await ctx.send(f"added {member} to {scoreboard_name}")
+    await ctx.send(f":white_check_mark: added {member} to `{scoreboard_name}`")
 
 
 @client.command(name='points',
-                description="Manages someones points on a specified scoreboard. You can add points to all members with a certain role as well\n\nCorrect usage is s!points (add/remove/set) [member/role] [scoreboard_name] [points]",
-                brief="Adds points to someone.",
                 aliases=['point', 'p'])
-#@commands.check(check_permissions)
+@commands.check(check_permissions)
 async def points(ctx, *args):
-  correct_usage = 'Correct usage is s!points (add/remove/set) [member/role] [scoreboard_name] [points]'
+  correct_usage = 'Correct usage is `s!points (add/remove/set) [member/role] [scoreboard_name] [points]`'
 
   #Get user input
   try:
     option, member, scoreboard_name, points = args
     points = int(points)
   except ValueError:
-    await ctx.send("Something went wrong!\n" + correct_usage)
+    await ctx.send(":x: Invalid arguments.\n" + correct_usage)
     return
   
   #Option should be either add, remove or set
   #Otherwise throw error
   if option not in ["add", "remove", "set"]:
-    await ctx.send("Incorrect option for s!points, " + option + "\nPlease use either add, remove or set\n" + correct_usage)
+    await ctx.send(f":x: Incorrect option for `s!points` {option}\nPlease use either `add`, `remove` or `set`\n" + correct_usage)
     return
   
   with open('scoreboards.txt', "r") as scoreboards_orig:
@@ -295,7 +295,7 @@ async def points(ctx, *args):
       try:
         scoreboards[str(ctx.message.guild.id)][scoreboard_name]
       except KeyError:
-        await ctx.send(f"The scoreboard *{scoreboard_name}* does not seem to exist\n" + correct_usage)
+        await ctx.send(f":x: The scoreboard `{scoreboard_name}` does not seem to exist\n" + correct_usage)
         return
       try:
         if option == "add":
@@ -305,106 +305,41 @@ async def points(ctx, *args):
         elif option == "set":
           scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][cur_member] = points
       except KeyError:
-        # If a member is not on the scoreboard just continue, this should not happen but it is not the users fault
-        continue
+        if len(membersAffected) == 1:
+          await ctx.send(f":x: {membersAffected[0]} does not seem to exist in `{scoreboard_name}`")
+          return
 
-      try:
-        with open('scoreboards.txt', "w") as scoreboards_orig:
-          json.dump(scoreboards, scoreboards_orig, indent=4)
-      except:
-        await ctx.send("Internal server error, count to 10 and try again")
+    try:
+      with open('scoreboards.txt', "w") as scoreboards_orig:
+        json.dump(scoreboards, scoreboards_orig, indent=4)
+    except:
+      await ctx.send(":x: Internal server error, count to 10 and try again")
       
     if option == "add":
-      await ctx.send(f"Successfully added {points} point(s) to {member}")
+      await ctx.send(f":white_check_mark: Successfully added {points} point(s) to {member}")
     elif option == "remove":
-      await ctx.send(f"Successfully removed {points} point(s) from {member}")
+      await ctx.send(f":white_check_mark: Successfully removed {points} point(s) from {member}")
     elif option == "set":
-      await ctx.send(f"Successfully set {member} points to {points}")
+      await ctx.send(f":white_check_mark: Successfully set {member} points to {points}")
 
 
 
-#addPoints
-@client.command(name='addPoints',
-                description="Adds points to someone on a specified scoreboard.\n\nCorrect usage is s!addPoints [member] [scoreboard] [points]",
-                brief="Adds points to someone.",
-                aliases=['add_p', 'addP', "addpoints", 'addp'])
-async def addPoints(ctx, *args):
-
-
-  correct_usage = "Correct usage is s!addPoints [member] [scoreboard] [points]"
-  try:
-    member, scoreboard_name, points = args
-  except ValueError:
-    await ctx.send("Something went wrong!\n" + correct_usage)
-    return
-
-  with open('scoreboards.txt', "r") as scoreboards_orig:
-    scoreboards = json.load(scoreboards_orig)
-
-    try:
-      scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][member] += int(points)
-      new_score = scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][member]
-    except KeyError:
-      await ctx.send(f"There does not seem to be a {member} in {scoreboard_name}.\n" + correct_usage)
-      return
-
-  with open('scoreboards.txt', "w") as scoreboards_orig:
-    json.dump(scoreboards, scoreboards_orig, indent=4)
-
-  if points == "1":
-    await ctx.send(f'Added 1 point to {member}, new score is {new_score}.')
-  else:
-    await ctx.send(f'Added {points} points to {member}, new score is {new_score}.')
-
-
-#removePoints
-@client.command(name='removePoints',
-                description="Removes points from someone on a specified scoreboard.\n\nCorrect usage is s!removePoints [member] [scoreboard] [points]",
-                brief="Removes points from someone.",
-                aliases=['remove_p', 'removeP', "rm_p", "rmP", "removepoints"])
-async def removePoints(ctx, *args):
-  correct_usage = "Correct usage is s!removePoints [member] [scoreboard] [points]"
-  try:
-    member, scoreboard_name, points = args
-  except ValueError:
-    await ctx.send("Something went wrong!\n" + correct_usage)
-    return
-
-  with open('scoreboards.txt', "r") as scoreboards_orig:
-    scoreboards = json.load(scoreboards_orig)
-    try:
-      scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][member] -= int(points)
-      new_score = scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][member]
-    except KeyError:
-      await ctx.send(f"{member} does not seem to exist in {scoreboard_name}.\n{correct_usage}")
-
-  with open('scoreboards.txt', "w") as scoreboards_orig:
-    json.dump(scoreboards, scoreboards_orig, indent=4)
-
-  if points == "1":
-    await ctx.send(f'Removed 1 point from {member}, new score is {new_score}.')
-  else:
-    await ctx.send(f'Removed {points} points from {member}, new score is {new_score}.')
 
 #show
 @client.command(name='show',
-                description="Shows a scoreboard.\n\nCorrect usage is s!show [scoreboard] <page_number>",
-                brief="Shows a scoreboard.",
                 aliases=['Show'])
 async def show(ctx, *args):
-  correct_usage = "Correct usage is s!show [scoreboard] <page_number>"
+  correct_usage = "Correct usage is `s!show [scoreboard] <page_number>`"
   page_number = 1
   try:
     scoreboard_name = args[0]
   except:
-    await ctx.send("Something went wrong!\n" + correct_usage)
+    await ctx.send(":x: Invalid arguments.\n" + correct_usage)
     return
 
   if len(args) > 1:
     try:
       page_number = int(args[1])
-      
-
     except:
       pass
 
@@ -440,7 +375,7 @@ async def show(ctx, *args):
         page_number = len(pages)
 
       if len(pages) == 0:
-        await ctx.send(f"Unfortunately, **{scoreboard_name}** is empty, there is nothing to show.")
+        await ctx.send(f"Unfortunately, `{scoreboard_name}` is empty, there is nothing to show.")
         return
 
       if page_number == 1:
@@ -541,20 +476,18 @@ async def show(ctx, *args):
 
 
     except KeyError:
-      await ctx.send("That scoreboard does not seem to exist on this server.\n" + correct_usage)
+      await ctx.send(f":x: `{scoreboard_name}` does not seem to exist on this server.\n" + correct_usage)
 
 #ResetScoreboard
 @client.command(name='resetScoreboard',
-                description="Resets all scores on a specified scoreboard.\n\nCorrect usage is s!resetScores [scoreboard]",
-                brief="Resets all scores on a specified scoreboard",
                 aliases=['reset_scores', 'resetscores', "ResetScores", "resetScores", 'reset_scoreboard', 'resetscoreboard', "ResetScoreboard", "wipe", "Wipe"])
-#@commands.check(check_permissions)
+@commands.check(check_permissions)
 async def resetScoreboard(ctx, *args):
-  correct_usage = "Correct usage is s!resetScores [scoreboard]"
+  correct_usage = "Correct usage is `s!resetScores [scoreboard]`"
   try:
     scoreboard_name = args[0]
   except IndexError:
-    await ctx.send("Something went wrong!\n" + correct_usage)
+    await ctx.send(":x: Invalid arguments.\n" + correct_usage)
     return
 
   with open('scoreboards.txt', "r") as scoreboards_orig:
@@ -567,7 +500,7 @@ async def resetScoreboard(ctx, *args):
       scoreboard = scoreboards[str(ctx.message.guild.id)][scoreboard_name]
     except KeyError:
       # If the key can't be found
-      await ctx.send("That scoreboard does not seem to exist.")
+      await ctx.send(f":x: `{scoreboard_name}` does not seem to exist.")
       return
 
     for key in scoreboard["participants_scores"].keys():
@@ -576,22 +509,20 @@ async def resetScoreboard(ctx, *args):
   with open('scoreboards.txt', "w") as scoreboards_orig:
     json.dump(scoreboards, scoreboards_orig, indent=4)
 
-  await ctx.send(f"Reset all values in {scoreboard_name} to 0.")
+  await ctx.send(f":white_check_mark: Reset all values in `{scoreboard_name}` to 0.")
 
 
 @client.command(name='list',
-                description="Lists all scoreboards.\n\nCorrect usage is s!list",
-                brief="Lists all scoreboards.",
                 aliases=[])
-#@commands.check(check_permissions)
+@commands.check(check_permissions)
 async def list(ctx, *args):
-  correct_usage = "Correct usage is s!list"
+  correct_usage = "Correct usage is `s!list`"
 
   with open('scoreboards.txt', "r") as scoreboards_orig:
     scoreboards = json.load(scoreboards_orig)
     cur_scoreboards = scoreboards[str(ctx.message.guild.id)]
 
-  scoreboards_display = f"There are currently {len(cur_scoreboards)} scoreboards on this server\n" + "".join([("\n"+scoreboard) for scoreboard in cur_scoreboards])
+  scoreboards_display = f"There are currently {len(cur_scoreboards)} scoreboards on this server\n" + "".join([("\n`"+scoreboard+"`") for scoreboard in cur_scoreboards])
   await ctx.send(scoreboards_display)
 
 
@@ -600,15 +531,14 @@ async def list(ctx, *args):
 
 #removeScoreboard
 @client.command(name='removeScoreboard',
-                description="Removes a specified scoreboard.\n\nCorrect usage is s!removeScoreboard [scoreboard]",
-                brief="Removes a scoreboard",
                 aliases=['RemoveScoreboard', "removescoreboard"])
+@commands.check(check_permissions)
 async def removeScoreboard(ctx, *args):
-  correct_usage = "Correct usage is s!removeScoreboard [scoreboard]"
+  correct_usage = "Correct usage is `s!removeScoreboard [scoreboard]`"
   try:
     scoreboard_name = args[0]
   except IndexError:
-    await ctx.send("Something went wrong!\n" + correct_usage)
+    await ctx.send(":x: Invalid arguments.\n" + correct_usage)
     return
 
   with open('scoreboards.txt', "r") as scoreboards_orig:
@@ -621,14 +551,47 @@ async def removeScoreboard(ctx, *args):
       del scoreboards[str(ctx.message.guild.id)][scoreboard_name]
     except KeyError:
       # If the key can't be found
-      await ctx.send("That scoreboard does not seem to exist.")
+      await ctx.send(f":x: `{scoreboard_name}` does not seem to exist.")
       return
 
   with open('scoreboards.txt', "w") as scoreboards_orig:
     json.dump(scoreboards, scoreboards_orig, indent=4)
 
-  await ctx.send(f"Removed {scoreboard_name}.")
+  await ctx.send(f":white_check_mark: Removed `{scoreboard_name}`")
 
+
+#Help
+@client.command(pass_context=True)
+async def help(ctx):
+  author = ctx.message.author
+  embed = Embed(colour=discord.Colour(0x00FFFF))
+  embed.set_author(name="Help")
+
+
+  # All commands: s!create, s!show, s!member, s!points, s!list, s!prefix, s!removescoreboards, s!resetscoreboards, , s!help, 
+  
+  embed.add_field(name="s!create", value="Creates a scoreboard.\n`s!create [scoreboard_name]`", inline=False)
+
+  embed.add_field(name="s!show", value="Displays a scoreboard.\n`s!show [scoreboard]`", inline=False)
+
+  embed.add_field(name="s!member", value="Adds or removes members in a scoreboard.\n`s!member (add/remove) [@member|@role] [scoreboard_name]`", inline=False)
+
+  embed.add_field(name="s!points", value="Add, remove or set points in a scoreboard.\n`s!points (add|remove|set) [@member|@role] [scoreboard_name]`", inline=False)
+
+  embed.add_field(name="s!list", value="Lists all scoreboards in the server.\n`s!list`", inline=False)
+
+  embed.add_field(name="s!prefix", value="Changes the prefix for the bot.\n`s!prefix [new_prefix]`", inline=False)
+
+  embed.add_field(name="s!remove_scoreboard", value="Removes scoreboard.\n`s!remove_scoreboard [scoreboard]`", inline=False)
+
+  embed.add_field(name="s!reset_scoreboard", value="Resets all scores in a scoreboard.\n`s!reset_scoreboard [scoreboard]`", inline=False)
+
+  embed.add_field(name="s!help", value="Shows you this message.\n`s!help`", inline=False)
+
+  embed.add_field(name="s!invite", value="Sends you a link to invite this bot\n`s!invite`", inline=False)
+
+  await ctx.send("Sent you a DM containing the help message.")
+  await author.send(embed=embed)
 
 #Deprecated functions
 
@@ -647,6 +610,71 @@ async def addMember(ctx):
                 aliases=['remove_m', 'rm', 'removemember', 'RemoveMember'])
 async def removeMember(ctx):
   await ctx.send("This command has been replaced with\ns!member remove [member|role] [scoreboard]")
+
+#addPoints
+@client.command(name='addPoints',
+                description="Adds points to someone on a specified scoreboard.\n\nCorrect usage is s!addPoints [member] [scoreboard] [points]",
+                brief="Adds points to someone.",
+                aliases=['add_p', 'addP', "addpoints", 'addp'])
+@commands.check(check_permissions)
+async def addPoints(ctx, *args):
+
+
+  correct_usage = "Correct usage is s!addPoints [member] [scoreboard] [points]"
+  try:
+    member, scoreboard_name, points = args
+  except ValueError:
+    await ctx.send("Something went wrong!\n" + correct_usage)
+    return
+
+  with open('scoreboards.txt', "r") as scoreboards_orig:
+    scoreboards = json.load(scoreboards_orig)
+
+    try:
+      scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][member] += int(points)
+      new_score = scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][member]
+    except KeyError:
+      await ctx.send(f"There does not seem to be a {member} in {scoreboard_name}.\n" + correct_usage)
+      return
+
+  with open('scoreboards.txt', "w") as scoreboards_orig:
+    json.dump(scoreboards, scoreboards_orig, indent=4)
+
+  if points == "1":
+    await ctx.send(f'Added 1 point to {member}, new score is {new_score}.\nThis command has been deprecated, consider using ```s!points add``` instead.')
+  else:
+    await ctx.send(f'Added {points} points to {member}, new score is {new_score}.\nThis command has been deprecated, consider using ```s!points add``` instead.')
+
+
+#removePoints
+@client.command(name='removePoints',
+                description="Removes points from someone on a specified scoreboard.\n\nCorrect usage is s!removePoints [member] [scoreboard] [points]",
+                brief="Removes points from someone.",
+                aliases=['remove_p', 'removeP', "rm_p", "rmP", "removepoints"])
+@commands.check(check_permissions)
+async def removePoints(ctx, *args):
+  correct_usage = "Correct usage is s!removePoints [member] [scoreboard] [points]"
+  try:
+    member, scoreboard_name, points = args
+  except ValueError:
+    await ctx.send("Something went wrong!\n" + correct_usage)
+    return
+
+  with open('scoreboards.txt', "r") as scoreboards_orig:
+    scoreboards = json.load(scoreboards_orig)
+    try:
+      scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][member] -= int(points)
+      new_score = scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][member]
+    except KeyError:
+      await ctx.send(f"{member} does not seem to exist in {scoreboard_name}.\n{correct_usage}")
+
+  with open('scoreboards.txt', "w") as scoreboards_orig:
+    json.dump(scoreboards, scoreboards_orig, indent=4)
+
+  if points == "1":
+    await ctx.send(f'Removed 1 point from {member}, new score is {new_score}.\nThis command has been deprecated, consider using ```s!points remove``` instead.')
+  else:
+    await ctx.send(f'Removed {points} points from {member}, new score is {new_score}.\nThis command has been deprecated, consider using ```s!points remove``` instead.')
 
 
 token = os.environ.get("DISCORD_BOT_SECRET")
