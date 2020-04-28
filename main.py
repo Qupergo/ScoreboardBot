@@ -77,11 +77,22 @@ async def on_ready():
   print("Im in")
   print(client.user)
   guilds = client.guilds
+  memberSum = 0
   iteration = 0
+  highestGuildMemberCount = 0
+  largestGuildName = ""
   for guild in guilds:
-    print(guild.name)
+    memberSum += len(guild.members)
+    if len(guild.members) > highestGuildMemberCount:
+      highestGuildMemberCount = guild.members
+      largestGuildName = guild.name
     iteration += 1
-      
+
+  print("This bot is used by a total of: " + memberSum + " members")
+  print("The largest server this bot is on has " + highestGuildMemberCount + " members")
+  print("This server is called: " + largestGuildName)
+  print("Current amount of servers: " + iteration)
+  
   await client.change_presence(activity=Activity(name=f" scoreboards on {len(guilds)} servers", type=ActivityType.watching))
 
   with open('scoreboards.txt', "r") as scoreboards_orig:
