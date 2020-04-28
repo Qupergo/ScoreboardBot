@@ -84,7 +84,7 @@ async def on_ready():
   for guild in guilds:
     memberSum += len(guild.members)
     if len(guild.members) > highestGuildMemberCount:
-      highestGuildMemberCount = guild.members
+      highestGuildMemberCount = len(guild.members)
       largestGuildName = guild.name
     iteration += 1
 
