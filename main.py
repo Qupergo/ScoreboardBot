@@ -81,9 +81,7 @@ async def on_ready():
   for guild in guilds:
     print(guild.name)
     iteration += 1
-    #Keep from printing too many servers
-    if iteration > 100:
-      break
+      
   await client.change_presence(activity=Activity(name=f" scoreboards on {len(guilds)} servers", type=ActivityType.watching))
 
   with open('scoreboards.txt', "r") as scoreboards_orig:
@@ -531,7 +529,7 @@ async def list(ctx, *args):
 
 #removeScoreboard
 @client.command(name='removeScoreboard',
-                aliases=['RemoveScoreboard', "removescoreboard"])
+                aliases=['RemoveScoreboard', "remove_scoreboard"])
 @commands.check(check_permissions)
 async def removeScoreboard(ctx, *args):
   correct_usage = "Correct usage is `s!removeScoreboard [scoreboard]`"
@@ -582,7 +580,7 @@ async def help(ctx):
 
   embed.add_field(name="s!prefix", value="Changes the prefix for the bot.\n`s!prefix [new_prefix]`", inline=False)
 
-  embed.add_field(name="s!remove_scoreboard", value="Removes scoreboard.\n`s!remove_scoreboard [scoreboard]`", inline=False)
+  embed.add_field(name="s!remove_scoreboard", value="Removes a scoreboard.\n`s!remove_scoreboard [scoreboard]`", inline=False)
 
   embed.add_field(name="s!reset_scoreboard", value="Resets all scores in a scoreboard.\n`s!reset_scoreboard [scoreboard]`", inline=False)
 
@@ -597,30 +595,24 @@ async def help(ctx):
 
 #addMember (deprecated)
 @client.command(name='addMember',
-                description="Previously added a member to a scoreboard, now use s!member add",
-                brief="Use s!member add [member|role] [scoreboard]",
                 aliases=['add_m', 'addmember', 'AddMember'])
 async def addMember(ctx):
   await ctx.send("This command has been replaced with\ns!member add [member|role] [scoreboard]")
 
 #removeMember (deprecated)
 @client.command(name='removeMember',
-                description="Previously removed a member from a scoreboard, now use s!member remove",
-                brief="Use s!member remove [member|role] [scoreboard]",
                 aliases=['remove_m', 'rm', 'removemember', 'RemoveMember'])
 async def removeMember(ctx):
   await ctx.send("This command has been replaced with\ns!member remove [member|role] [scoreboard]")
 
 #addPoints
 @client.command(name='addPoints',
-                description="Adds points to someone on a specified scoreboard.\n\nCorrect usage is s!addPoints [member] [scoreboard] [points]",
-                brief="Adds points to someone.",
                 aliases=['add_p', 'addP', "addpoints", 'addp'])
 @commands.check(check_permissions)
 async def addPoints(ctx, *args):
 
 
-  correct_usage = "Correct usage is s!addPoints [member] [scoreboard] [points]"
+  correct_usage = "This command has been deprecated, consider using ```s!points add``` instead."
   try:
     member, scoreboard_name, points = args
   except ValueError:
@@ -648,12 +640,10 @@ async def addPoints(ctx, *args):
 
 #removePoints
 @client.command(name='removePoints',
-                description="Removes points from someone on a specified scoreboard.\n\nCorrect usage is s!removePoints [member] [scoreboard] [points]",
-                brief="Removes points from someone.",
                 aliases=['remove_p', 'removeP', "rm_p", "rmP", "removepoints"])
 @commands.check(check_permissions)
 async def removePoints(ctx, *args):
-  correct_usage = "Correct usage is s!removePoints [member] [scoreboard] [points]"
+  correct_usage = "This command has been deprecated, consider using `s!points remove` instead."
   try:
     member, scoreboard_name, points = args
   except ValueError:
@@ -672,9 +662,9 @@ async def removePoints(ctx, *args):
     json.dump(scoreboards, scoreboards_orig, indent=4)
 
   if points == "1":
-    await ctx.send(f'Removed 1 point from {member}, new score is {new_score}.\nThis command has been deprecated, consider using ```s!points remove``` instead.')
+    await ctx.send(f'Removed 1 point from {member}, new score is {new_score}.\nThis command has been deprecated, consider using `s!points remove` instead.')
   else:
-    await ctx.send(f'Removed {points} points from {member}, new score is {new_score}.\nThis command has been deprecated, consider using ```s!points remove``` instead.')
+    await ctx.send(f'Removed {points} points from {member}, new score is {new_score}.\nThis command has been deprecated, consider using `s!points remove` instead.')
 
 
 token = os.environ.get("DISCORD_BOT_SECRET")
