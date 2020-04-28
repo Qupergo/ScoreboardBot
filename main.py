@@ -79,18 +79,20 @@ async def on_ready():
   guilds = client.guilds
   memberSum = 0
   iteration = 0
-  highestGuildMemberCount = 0
-  largestGuildName = ""
+  topGuilds = []
+  
+
   for guild in guilds:
     memberSum += len(guild.members)
-    if len(guild.members) > highestGuildMemberCount:
-      highestGuildMemberCount = len(guild.members)
-      largestGuildName = guild.name
+    topGuilds.append(guild)
     iteration += 1
+  topGuilds = sorted(topGuilds, reverse=True, key=lambda x:len(x.members))
+
+  print("The top guilds are:")
+  for index, guild in enumerate(topGuilds[:15]):
+    print(f"{index+1}. {guild.name}: {len(guild.members)} members")
 
   print(f"This bot is used by a total of: {memberSum} members")
-  print(f"The largest server this bot is on has {highestGuildMemberCount} members")
-  print(f"This server is called: {largestGuildName}")
   print(f"Current amount of servers: {iteration}")
   
   await client.change_presence(activity=Activity(name=f" scoreboards on {len(guilds)} servers", type=ActivityType.watching))
