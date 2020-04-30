@@ -288,6 +288,10 @@ async def points(ctx, *args):
           if role == cur_role:
             membersAffected.append(cur_member)
             break
+
+      if len(membersAffected) == 0:
+        await ctx.send(f":x: There does not seem to be anyone with the role {role} in `{scoreboard_name}`")
+        return
     else:
       # If only a single user is mentioned
       try:
@@ -298,7 +302,7 @@ async def points(ctx, *args):
         membersAffected = [member]
       else:
         membersAffected = ["<@" + str(user.id) + ">"]
-
+    
     for cur_member in membersAffected:
       if isinstance(cur_member, discord.member.Member):
         cur_member = "<@" + str(cur_member.id) + ">"
@@ -480,10 +484,11 @@ async def show(ctx, *args):
 
       embed.add_field(name="_", value=f"```{table}```", inline=False)
 
-
-      await ctx.send(embed=embed)
-      if (len(embed) > 1024):
+      if (len(embed) >= 1024):
         await ctx.send("Scoreboard is too large")
+      else:
+        await ctx.send(embed=embed)
+
 
 
     except KeyError:
