@@ -51,6 +51,7 @@ async def check_permissions(ctx, *args):
   return False
 
 
+
 @client.command(name='prefix',
                 aliases=['pre', 'change_prefix', 'changeprefix', 'changePrefix'],
                 pass_context=True)
@@ -168,8 +169,7 @@ async def create(ctx, *args):
     cur_scoreboards[scoreboard_name] = {'name':scoreboard_name, 'guild_id':str(ctx.message.guild.id), 'participants_scores':{}}
     scoreboards[str(ctx.message.guild.id)] = cur_scoreboards
 
-  with open('scoreboards.txt', "w") as scoreboards_orig:
-    json.dump(scoreboards, scoreboards_orig, indent=4)
+  save_scoreboards(scoreboards, ctx=ctx)
   await ctx.send(f':white_check_mark: Created a scoreboard with the name {scoreboard_name}')
 
 #Member
@@ -235,8 +235,7 @@ async def member(ctx, *args):
         await ctx.send(f":x: The scoreboard `{scoreboard_name}` does not exist.")
         return
 
-  with open('scoreboards.txt', "w") as scoreboards_orig:
-    json.dump(scoreboards, scoreboards_orig, indent=4)
+  save_scoreboards(scoreboards, ctx=ctx)
 
   if option.lower() == "remove":
     await ctx.send(f':white_check_mark: removed {member} from `{scoreboard_name}`')
@@ -268,7 +267,11 @@ async def points(ctx, *args):
   with open('scoreboards.txt', "r") as scoreboards_orig:
 
     scoreboards = json.load(scoreboards_orig)
-    allScoreboardMembers = scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"].keys()
+    try:
+      allScoreboardMembers = scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"].keys()
+    except KeyError:
+      await ctx.send(f":x: The scoreboard `{scoreboard_name}` does not seem to exist.")
+      return
 
     #Check if a role has been mentioned
     roles = ctx.message.role_mentions
@@ -324,12 +327,8 @@ async def points(ctx, *args):
           await ctx.send(f":x: {membersAffected[0]} does not seem to exist in `{scoreboard_name}`")
           return
 
-    try:
-      with open('scoreboards.txt', "w") as scoreboards_orig:
-        json.dump(scoreboards, scoreboards_orig, indent=4)
-    except:
-      await ctx.send(":x: Internal server error, count to 10 and try again")
-      
+    save_scoreboards(scoreboards, ctx=ctx)
+
     if option == "add":
       await ctx.send(f":white_check_mark: Successfully added {points} point(s) to {member}")
     elif option == "remove":
@@ -370,7 +369,17 @@ async def show(ctx, *args):
 
       iteration = 0
       pages = []
-      members_per_page = 10
+      try:
+        settings = scoreboards[str(ctx.message.guild.id)][scoreboard_name]["settings"]
+      except:
+        scoreboards[str(ctx.message.guild.id)][scoreboard_name]["settings"] = default_settings()
+        settings = scoreboards[str(ctx.message.guild.id)][scoreboard_name]["settings"]
+
+
+
+      members_per_page = int(settings["members_per_page"])
+      formatting = settings["format"]
+
       current_page = []
 
       for key, value in member_order:
@@ -393,99 +402,113 @@ async def show(ctx, *args):
         await ctx.send(f"Unfortunately, `{scoreboard_name}` is empty, there is nothing to show.")
         return
 
+      # Default
       if page_number == 1:
         embed = Embed(title=f"{scoreboard_name}", colour=discord.Colour(0x00FFFF))
       else:
         embed = Embed(colour=discord.Colour(0x00FFFF))
       embed.add_field(name="Page", value=f"{page_number}/{len(pages)}")
-
+      
       current_page = pages[page_number - 1]
 
-      default_table = """
-      ╔r╦m╦p╗
-      ║l1000║n1000║s1000║
-      ╠r╬m╬p╣
-      ║l1001║n1001║s1001║
-      ╠r╬m╬p╣
-      ║l1002║n1002║s1002║
-      ╚r╩m╩p╝
-      """
-      table = ""
+      #
+      #TABLE
+      #
+      if formatting == "table":
+        default_table = """
+        ╔r╦m╦p╗
+        ║l1000║n1000║s1000║
+        ╠r╬m╬p╣
+        ║l1001║n1001║s1001║
+        ╠r╬m╬p╣
+        ║l1002║n1002║s1002║
+        ╚r╩m╩p╝
+        """
+        table = ""
 
-      # To not have duplicates
-      offset = 1000
+        # To not have duplicates
+        offset = 1000
 
-      # This will be the minimum length of each row
-      memberLength = len("member")
-      pointsLength = len("points")
-      rankLength = len("rank")
+        # This will be the minimum length of each row
+        memberLength = len("member")
+        pointsLength = len("points")
+        rankLength = len("rank")
 
-      tableLenghtener = "═"
-      current_page.insert(0, ["Member", "Points"])
-      usernames = []
-      for index, member_points in enumerate(current_page, offset):
-        member = member_points[0]
-        points = member_points[1]
+        tableLenghtener = "═"
+        current_page.insert(0, ["Member", "Points"])
+        usernames = []
+        for index, member_points in enumerate(current_page, offset):
+          member = member_points[0]
+          points = member_points[1]
 
-        # Member is in format <@id>
-        try:
-          user = client.get_user(int(''.join(c for c in member if c.isdigit())))
-        except:
-          user = None
-        # If user is not found, replace with the member since it is probably not in the format above
-        if user == None:
-          username = member
-        else:
-          username = "@" + user.name
 
+          username = await get_discord_user(member)
+          
+          usernames.append(username)
+          # Make the length equal the longest name
+          if len(username) > memberLength:
+            memberLength = len(username)
+          
+          if (len(str(points))) > pointsLength:
+            pointsLength = len(str(points))
+          
+          if (index - offset) == 0:
+            table += f"╔r╦m╦p╗\n"
+            table += f"║l{index}║n{index}║s{index}║\n"
+            table += f"╠r╬m╬p╣\n"
+          elif (index - offset) == (len(current_page) - 1):
+            table += f"║l{index}║n{index }║s{index}║\n"
+            table += "╚r╩m╩p╝\n"
+          else:
+            table += f"║l{index}║n{index}║s{index}║\n"
+            table += "╠r╬m╬p╣\n"
         
-        usernames.append(username)
-        # Make the length equal the longest name
-        if len(username) > memberLength:
-          memberLength = len(username)
+        # Add 2 spaces to create margin
+        margin = 2
+        memberLength += margin 
+        pointsLength += margin
+        rankLength += margin
         
-        if (len(str(points))) > pointsLength:
-          pointsLength = len(str(points))
-        
-        if (index - offset) == 0:
-          table += f"╔r╦m╦p╗\n"
-          table += f"║l{index}║n{index}║s{index}║\n"
-          table += f"╠r╬m╬p╣\n"
-        elif (index - offset) == (len(current_page) - 1):
-          table += f"║l{index}║n{index }║s{index}║\n"
-          table += "╚r╩m╩p╝\n"
-        else:
-          table += f"║l{index}║n{index}║s{index}║\n"
-          table += "╠r╬m╬p╣\n"
-      
-      # Add 2 spaces to create margin
-      margin = 2
-      memberLength += margin 
-      pointsLength += margin
-      rankLength += margin
-      
-      table = table.replace("r", tableLenghtener*rankLength)
-      table = table.replace("m", tableLenghtener*memberLength)
-      table = table.replace("p", tableLenghtener*pointsLength)
-      
-
-      for index, member_points in enumerate(current_page, offset):
-        member = member_points[0]
-        points = member_points[1]
-        table = table.replace(f"n{index}", f" {usernames[index - offset]}".ljust(memberLength, " "))
-        table = table.replace(f"s{index}", f"{str(points)}".center(pointsLength, " "))
-
-        if (index - offset) == 0:
-          table = table.replace(f"l{index}", " Rank".ljust(rankLength, " "))
-      
-        else:
-          table = table.replace(f"l{index}", f" {(index - offset) + (page_number-1) * members_per_page}.".ljust(rankLength, " "))
+        table = table.replace("r", tableLenghtener*rankLength)
+        table = table.replace("m", tableLenghtener*memberLength)
+        table = table.replace("p", tableLenghtener*pointsLength)
         
 
-      embed.add_field(name="_", value=f"```{table}```", inline=False)
+        for index, member_points in enumerate(current_page, offset):
+          member = member_points[0]
+          points = member_points[1]
+          table = table.replace(f"n{index}", f" {usernames[index - offset]}".ljust(memberLength, " "))
+          table = table.replace(f"s{index}", f"{str(points)}".center(pointsLength, " "))
+
+          if (index - offset) == 0:
+            table = table.replace(f"l{index}", " Rank".ljust(rankLength, " "))
+        
+          else:
+            table = table.replace(f"l{index}", f" {(index - offset) + (page_number-1) * members_per_page}.".ljust(rankLength, " "))
+        
+        embed.add_field(name="_", value=f"```{table}```", inline=False)
+
+      #
+      # Classic
+      #
+      elif formatting == "classic":
+        title = "💠 🔷 🔹🔹 **" + scoreboard_name + "** 🔹🔹 🔷 💠"
+        point_prefix = "🔹"
+        scoreboard_classic = ""
+        for index, member_points in enumerate(current_page):
+          member = member_points[0]
+          points = member_points[1]
+          username = await get_discord_user(member)
+
+          scoreboard_classic += f"{index+1}. {username}\n{point_prefix} {points}\n\n"
+        embed.add_field(name="_", value=f"{scoreboard_classic}", inline=False)
+        embed.title = title
+      
+
+
 
       if (len(embed) >= 1024):
-        await ctx.send("Scoreboard is too large")
+        await ctx.send("Scoreboard exceeds discord's character limit\nYou can try to lower the members per page or change the formatting using `s!settings`")
       else:
         await ctx.send(embed=embed)
 
@@ -522,8 +545,7 @@ async def resetScoreboard(ctx, *args):
     for key in scoreboard["participants_scores"].keys():
       scoreboard["participants_scores"][key] = 0
 
-  with open('scoreboards.txt', "w") as scoreboards_orig:
-    json.dump(scoreboards, scoreboards_orig, indent=4)
+  save_scoreboards(scoreboards, ctx=ctx)
 
   await ctx.send(f":white_check_mark: Reset all values in `{scoreboard_name}` to 0.")
 
@@ -570,44 +592,179 @@ async def removeScoreboard(ctx, *args):
       await ctx.send(f":x: `{scoreboard_name}` does not seem to exist.")
       return
 
-  with open('scoreboards.txt', "w") as scoreboards_orig:
-    json.dump(scoreboards, scoreboards_orig, indent=4)
+  save_scoreboards(scoreboards, ctx=ctx)
 
   await ctx.send(f":white_check_mark: Removed `{scoreboard_name}`")
 
 
+
+
+
+
+@client.command(pass_context=True)
+@commands.check(check_permissions)  
+async def settings(ctx, *args):
+  correct_usage = "Correct usage is `s!settings [setting] [scoreboard/all] [change]` write `s!help settings` for more info"
+  formats = ["table", "classic_crimson", "classic_winter", "classic_gamble"]
+  settings = ["prefix", "members_per_page", "membersperpage", "format"]
+  try:
+    scoreboard_name, setting, change = args
+  except:
+    await ctx.send(":x: Invalid arguments.\n" + correct_usage)
+    return
+  # Settings:
+  # Prefix
+  # Members per page
+  # formatting
+  # Show settings
+
+  if setting.lower() not in settings:
+    await ctx.send(f"{setting} is not a valid setting\n{correct_usage}")
+    return
+
+  # Check if valid change
+  if setting.lower() in ["formatting", "format"]:
+    if change.lower() not in formats:
+      await ctx.send(f":x: `{change}` is not a valid format.\n{correct_usage}")
+      return
+  
+  elif setting.lower() in ["members_per_page", "mpp", "membersperpage"]:
+    if not change.isdigit():
+      await ctx.send(f":x: `{change}` needs to be a number.\n{correct_usage}")
+      return
+
+
+
+  with open('scoreboards.txt', "r") as scoreboards_orig:
+
+    # Load scoreboard
+    scoreboards = json.load(scoreboards_orig)
+    if scoreboard_name == "all":
+      for key in scoreboards[str(ctx.guild.id)].keys():
+        # If there is no setting page
+        # Just create one with default settings
+        if "settings" not in scoreboards[str(ctx.guild.id)][key].keys():
+          scoreboards[str(ctx.guild.id)][key]["settings"] = default_settings()
+        
+        scoreboards[str(ctx.guild.id)][key]["settings"][setting] = change
+
+    elif scoreboard_name in scoreboards[str(ctx.guild.id)].keys():
+      # If there is no setting page
+      # Just create one with default settings
+      if "settings" not in scoreboards[str(ctx.guild.id)][scoreboard_name].keys():
+        scoreboards[str(ctx.guild.id)][scoreboard_name]["settings"] = default_settings()
+      
+      scoreboards[str(ctx.guild.id)][scoreboard_name]["settings"][setting] = change
+
+    else:
+      await ctx.send(f":x: A scoreboard with the name `{scoreboard_name}` does not seem to exist.")
+      return
+
+    save_scoreboards(scoreboards, ctx=ctx)
+
+    await ctx.send(f":white_check_mark: Sucessfully changed `{setting}` to `{change}`")
+
+    
+
+def default_settings():
+  return {
+    "format":"table",
+    "prefix":"s!",
+    "members_per_page":10,
+          }
+
+async def get_discord_user(member):
+  # Member is in format <@id> or <@!id> if it is a mentioned user
+  try:
+    user = client.get_user(int(''.join(c for c in member if c.isdigit())))
+  except:
+    user = None
+  # If user is not found, replace with the member since it is probably not in the format above
+  if user == None:
+    username = member
+  else:
+    username = "@" + user.name
+  return username
+
+def save_scoreboards(scoreboards, ctx=None):
+    try:
+      with open('scoreboards.txt', "w") as scoreboards_orig:
+        json.dump(scoreboards, scoreboards_orig, indent=4)
+    except:
+      if ctx == None:
+        return
+      ctx.send(":x: Internal server error, count to 10 and try again")
+
 #Help
 @client.command(pass_context=True)
-async def help(ctx):
+async def help(ctx, *args):
+  if len(args) > 0:
+    in_depth_command = args[0]
+  else:
+    in_depth_command = "None"
+  
   author = ctx.message.author
   embed = Embed(colour=discord.Colour(0x00FFFF))
-  embed.set_author(name="Help")
 
+  if in_depth_command.lower() == "settings":
+    embed.set_author(name="Help Settings")
 
-  # All commands: s!create, s!show, s!member, s!points, s!list, s!prefix, s!removescoreboards, s!resetscoreboards, , s!help, 
-  
-  embed.add_field(name="s!create", value="Creates a scoreboard.\n`s!create [scoreboard_name]`", inline=False)
+    embed.add_field(name="s!settings", value="`s!settings [setting] [scoreboard/all] [change]`\nThe settings you can change are:", inline=False)
 
-  embed.add_field(name="s!show", value="Displays a scoreboard.\n`s!show [scoreboard]`", inline=False)
+    embed.add_field(name="Format, this changes the look of the scoreboard.", value="These are the available formats:\n", inline=False)
+    embed.add_field(name="💠 🔷 🔹🔹 **Classic** 🔹🔹 🔷 💠\n\n", value="```╔═══════╗\n║ Table ║\n╚═══════╝```\n`s!settings format [scoreboard/all] table|classic`", inline=False)
 
-  embed.add_field(name="s!member", value="Adds or removes members in a scoreboard.\n`s!member (add/remove) [@member|@role] [scoreboard_name]`", inline=False)
+    embed.add_field(name="\n\nMembers per page, this changes the amount of members per page.", value="`s!settings members_per_page [scoreboard/all] 15`", inline=False)
+  else:
+    # All commands: s!create, s!show, s!member, s!points, s!list, s!prefix, s!removescoreboards, s!resetscoreboards, , s!help, 
 
-  embed.add_field(name="s!points", value="Add, remove or set points in a scoreboard.\n`s!points (add|remove|set) [@member|@role] [scoreboard_name]`", inline=False)
+    embed.set_author(name="Help")
 
-  embed.add_field(name="s!list", value="Lists all scoreboards in the server.\n`s!list`", inline=False)
+    embed.add_field(name="s!create", value="Creates a scoreboard.\n`s!create [scoreboard_name]`", inline=False)
 
-  embed.add_field(name="s!prefix", value="Changes the prefix for the bot.\n`s!prefix [new_prefix]`", inline=False)
+    embed.add_field(name="s!show", value="Displays a scoreboard.\n`s!show [scoreboard]`", inline=False)
 
-  embed.add_field(name="s!remove_scoreboard", value="Removes a scoreboard.\n`s!remove_scoreboard [scoreboard]`", inline=False)
+    embed.add_field(name="s!member", value="Adds or removes members in a scoreboard.\n`s!member (add/remove) [@member|@role] [scoreboard_name]`", inline=False)
 
-  embed.add_field(name="s!reset_scoreboard", value="Resets all scores in a scoreboard.\n`s!reset_scoreboard [scoreboard]`", inline=False)
+    embed.add_field(name="s!points", value="Add, remove or set points in a scoreboard.\n`s!points (add|remove|set) [@member|@role] [scoreboard_name]`", inline=False)
 
-  embed.add_field(name="s!help", value="Shows you this message.\n`s!help`", inline=False)
+    embed.add_field(name="s!list", value="Lists all scoreboards in the server.\n`s!list`", inline=False)
 
-  embed.add_field(name="s!invite", value="Sends you a link to invite this bot\n`s!invite`", inline=False)
+    embed.add_field(name="s!prefix", value="Changes the prefix for the bot.\n`s!prefix [new_prefix]`", inline=False)
+
+    embed.add_field(name="s!remove_scoreboard", value="Removes a scoreboard.\n`s!remove_scoreboard [scoreboard]`", inline=False)
+
+    embed.add_field(name="s!reset_scoreboard", value="Resets all scores in a scoreboard.\n`s!reset_scoreboard [scoreboard]`", inline=False)
+
+    embed.add_field(name="s!help", value="Shows you this message.\n`s!help`", inline=False)
+
+    embed.add_field(name="s!invite", value="Sends you a link to invite this bot\n`s!invite`", inline=False)
+
+    embed.add_field(name="s!settings", value="Allows you to change various settings for Scoreboarder\n`s!settings [setting] [scoreboard/all] [change]` \nwrite `s!help settings` for more info")
 
   await ctx.send("Sent you a DM containing the help message.")
   await author.send(embed=embed)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #Deprecated functions
 
