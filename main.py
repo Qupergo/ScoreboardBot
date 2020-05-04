@@ -604,7 +604,7 @@ async def removeScoreboard(ctx, *args):
 @client.command(pass_context=True)
 @commands.check(check_permissions)  
 async def settings(ctx, *args):
-  correct_usage = "Correct usage is `s!settings [setting] [scoreboard/all] [change]` write `s!help settings` for more info"
+  correct_usage = "Correct usage is `s!settings [scoreboard/all] [setting] [change]` write `s!help settings` for more info"
   formats = ["table", "classic_crimson", "classic_winter", "classic_gamble"]
   settings = ["prefix", "members_per_page", "membersperpage", "format"]
   try:
@@ -617,6 +617,7 @@ async def settings(ctx, *args):
   # Members per page
   # formatting
   # Show settings
+  
 
   if setting.lower() not in settings:
     await ctx.send(f"{setting} is not a valid setting\n{correct_usage}")
@@ -709,12 +710,12 @@ async def help(ctx, *args):
   if in_depth_command.lower() == "settings":
     embed.set_author(name="Help Settings")
 
-    embed.add_field(name="s!settings", value="`s!settings [setting] [scoreboard/all] [change]`\nThe settings you can change are:", inline=False)
+    embed.add_field(name="s!settings", value="`s!settings [scoreboard/all] [setting] [change]`\nThe settings you can change are:", inline=False)
 
     embed.add_field(name="Format, this changes the look of the scoreboard.", value="These are the available formats:\n", inline=False)
-    embed.add_field(name="💠 🔷 🔹🔹 **Classic** 🔹🔹 🔷 💠\n\n", value="```╔═══════╗\n║ Table ║\n╚═══════╝```\n`s!settings format [scoreboard/all] table|classic`", inline=False)
+    embed.add_field(name="💠 🔷 🔹🔹 **Classic** 🔹🔹 🔷 💠\n\n", value="```╔═══════╗\n║ Table ║\n╚═══════╝```\n`s!settings [scoreboard/all] format table|classic`", inline=False)
 
-    embed.add_field(name="\n\nMembers per page, this changes the amount of members per page.", value="`s!settings members_per_page [scoreboard/all] 15`", inline=False)
+    embed.add_field(name="\n\nMembers per page, this changes the amount of members per page.", value="`s!settings [scoreboard/all] members_per_page 15`", inline=False)
   else:
     # All commands: s!create, s!show, s!member, s!points, s!list, s!prefix, s!removescoreboards, s!resetscoreboards, , s!help, 
 
