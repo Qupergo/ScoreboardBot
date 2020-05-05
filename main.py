@@ -605,7 +605,7 @@ async def removeScoreboard(ctx, *args):
 @commands.check(check_permissions)  
 async def settings(ctx, *args):
   correct_usage = "Correct usage is `s!settings [scoreboard/all] [setting] [change]` write `s!help settings` for more info"
-  formats = ["table", "classic_crimson", "classic_winter", "classic_gamble"]
+  formats = ["table", "classic_crimson", "classic", "classic_gamble"]
   settings = ["prefix", "members_per_page", "membersperpage", "format"]
   try:
     scoreboard_name, setting, change = args
@@ -617,7 +617,7 @@ async def settings(ctx, *args):
   # Members per page
   # formatting
   # Show settings
-  
+
 
   if setting.lower() not in settings:
     await ctx.send(f"{setting} is not a valid setting\n{correct_usage}")
