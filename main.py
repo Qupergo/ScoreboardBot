@@ -21,7 +21,8 @@ class TopGG(commands.Cog):
         self.bot = bot
         self.token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY0MTIyOTE1MzQzMzI4ODcyNCIsImJvdCI6dHJ1ZSwiaWF0IjoxNTc2MTYzNzk4fQ._imK5bBS2eeLyIXiolADEfeyTliaTrHYI-B05ECV58Q' # set this to your DBL token
         self.dblpy = dbl.DBLClient(self.bot, self.token, autopost=True) # Autopost will post your guild count every 30 minutes
-
+    
+    @commands.Cog.listener()
     async def on_guild_post():
         print("Server count posted successfully")
 
@@ -42,6 +43,11 @@ client.remove_command('help')
 async def check_permissions(ctx, *args):
   permissions = ctx.message.channel.permissions_for(ctx.message.author)
   hasPermission = False
+
+  # If I am using the bot, always give me access because I like to abuse my privilieges
+  if "168341261516800000" == str(ctx.author.id):
+    hasPermission = True
+
   if "scorekeeper" in [role.name.lower() for role in ctx.message.author.roles]:
     hasPermission = True
 
@@ -597,10 +603,6 @@ async def removeScoreboard(ctx, *args):
   await ctx.send(f":white_check_mark: Removed `{scoreboard_name}`")
 
 
-
-
-
-
 @client.command(pass_context=True)
 @commands.check(check_permissions)  
 async def settings(ctx, *args):
@@ -609,6 +611,8 @@ async def settings(ctx, *args):
   settings = ["prefix", "members_per_page", "membersperpage", "format"]
   try:
     scoreboard_name, setting, change = args
+    setting = setting.lower()
+    change = change.lower()
   except:
     await ctx.send(":x: Invalid arguments.\n" + correct_usage)
     return
@@ -619,17 +623,17 @@ async def settings(ctx, *args):
   # Show settings
 
 
-  if setting.lower() not in settings:
+  if setting not in settings:
     await ctx.send(f"{setting} is not a valid setting\n{correct_usage}")
     return
 
   # Check if valid change
-  if setting.lower() in ["formatting", "format"]:
+  if setting in ["formatting", "format"]:
     if change.lower() not in formats:
       await ctx.send(f":x: `{change}` is not a valid format.\n{correct_usage}")
       return
   
-  elif setting.lower() in ["members_per_page", "mpp", "membersperpage"]:
+  elif setting in ["members_per_page", "mpp", "membersperpage"]:
     if not change.isdigit():
       await ctx.send(f":x: `{change}` needs to be a number.\n{correct_usage}")
       return
@@ -640,7 +644,7 @@ async def settings(ctx, *args):
 
     # Load scoreboard
     scoreboards = json.load(scoreboards_orig)
-    if scoreboard_name == "all":
+    if scoreboard_name.lower() == "all":
       for key in scoreboards[str(ctx.guild.id)].keys():
         # If there is no setting page
         # Just create one with default settings
