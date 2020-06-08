@@ -14,6 +14,7 @@ load_dotenv()
 DEFAULT_MESSAGE_PREFIX = "s!"
 
 
+
 class TopGG(commands.Cog):
     """Handles interactions with the top.gg API"""
 
@@ -190,13 +191,22 @@ async def member(ctx, *args):
     await ctx.send(":x: Not enough arguments\n" + correct_usage)
     return
 
-  if option.lower() not in ['add', 'remove']:
+  if option.lower() not in ['add', "+", 'remove', "-"]:
     await ctx.send("Incorrect option for `s!add`. Use either `add` or `remove`\n" + correct_usage)
     return
+
 
   with open('scoreboards.txt', "r") as scoreboards_orig:
 
     scoreboards = json.load(scoreboards_orig)
+
+
+    # Make sure the scoreboard exists
+    if scoreboard_name not in scoreboards[str(ctx.message.guild.id)].keys():
+      await ctx.send(f":x: The scoreboard `{scoreboard_name}` does not exist.")
+      return
+    
+
     roles = ctx.message.role_mentions
     members_to_interact = []
 
@@ -221,6 +231,8 @@ async def member(ctx, *args):
         else:
           members_to_interact = ["<@" + str(user.id) + ">"]
 
+
+
       for cur_member in members_to_interact:
       
         #For some reason, discord adds ! to mentions sometimes
@@ -229,16 +241,27 @@ async def member(ctx, *args):
         if isinstance(cur_member, discord.member.Member):
           cur_member = "<@" + str(cur_member.id) + ">"
 
-        if option.lower() == "add":
+
+
+        if option.lower() in ["add", "+"]:
           # If the member is already in the scoreboard, don't add them again
           if cur_member in scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"].keys():
             continue
           scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][cur_member] = 0
-        elif option.lower() == "remove":
+        
+        elif option.lower() in ["remove", "-"]:
+          # If the member is not in the scoreboard you can't remove them.
+          # But if you are removing by role it is completly fine to try and remove a couple roles who aren't one the scoreboard.
+          # Since expected behaviour is to remove everyone with that role.
+          if not cur_member in scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"].keys() and len(members_to_interact) == 1:
+            await ctx.send(f":x: The member {cur_member} does not seem to exist in that scoreboard")
+            return
+
           del scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][cur_member]
 
     except KeyError:
-        await ctx.send(f":x: The scoreboard `{scoreboard_name}` does not exist.")
+
+        await ctx.send(f":x: The member {member} does not seem to exist in that scoreboard.")
         return
 
   save_scoreboards(scoreboards, ctx=ctx)
@@ -515,8 +538,10 @@ async def show(ctx, *args):
 
       if (len(embed) >= 1024):
         await ctx.send("Scoreboard exceeds discord's character limit\nYou can try to lower the members per page or change the formatting using `s!settings`")
+        return
       else:
-        await ctx.send(embed=embed)
+        message = await ctx.send(embed=embed)
+      
 
 
 
