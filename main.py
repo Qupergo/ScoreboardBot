@@ -222,6 +222,7 @@ async def member(ctx, *args):
 
       # Else only a single member should be interacted with
       else:
+      
         try:
           user = client.get_user(int(''.join(c for c in member if c.isdigit())))
         except:
@@ -234,7 +235,6 @@ async def member(ctx, *args):
 
 
       for cur_member in members_to_interact:
-      
         #For some reason, discord adds ! to mentions sometimes
         #This will then count as different people, even though they mention the same person
         #So just default it to <@user_id> instead of <@!user_id>
@@ -282,7 +282,7 @@ async def points(ctx, *args):
   #Get user input
   try:
     option, member, scoreboard_name, points = args
-    points = int(points)
+    points = round(float(points), 3)
   except ValueError:
     await ctx.send(":x: Invalid arguments.\n" + correct_usage)
     return
@@ -471,7 +471,7 @@ async def show(ctx, *args):
           points = member_points[1]
 
 
-          username = await get_discord_user(member)
+          username = await get_username_from_id(member)
           
           usernames.append(username)
           # Make the length equal the longest name
@@ -527,7 +527,7 @@ async def show(ctx, *args):
         for index, member_points in enumerate(current_page):
           member = member_points[0]
           points = member_points[1]
-          username = await get_discord_user(member)
+          username = await get_username_from_id(member)
 
           scoreboard_classic += f"{index+1}. {username}\n{point_prefix} {points}\n\n"
         embed.add_field(name="_", value=f"{scoreboard_classic}", inline=False)
@@ -703,7 +703,7 @@ def default_settings():
     "members_per_page":10,
           }
 
-async def get_discord_user(member):
+async def get_username_from_id(member):
   # Member is in format <@id> or <@!id> if it is a mentioned user
   try:
     user = client.get_user(int(''.join(c for c in member if c.isdigit())))
