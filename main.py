@@ -48,7 +48,7 @@ async def check_permissions(ctx, *args):
   # If I am using the bot, always give me access because I like to abuse my privilieges
   if "168341261516800000" == str(ctx.author.id):
     hasPermission = True
-
+  
   if "scorekeeper" in [role.name.lower() for role in ctx.message.author.roles]:
     hasPermission = True
 
@@ -184,7 +184,7 @@ async def create(ctx, *args):
                 aliases=['Member', 'mem', 'Mem'])
 @commands.check(check_permissions)
 async def member(ctx, *args):
-  correct_usage = "Correct usage is `s!member (add/remove) [member/role] [scoreboard_name]`"
+  correct_usage = "Correct usage is `s!member (add/remove) [member/role/position] [scoreboard_name]`"
   try:
     option, member, scoreboard_name = args
   except ValueError:
@@ -222,8 +222,22 @@ async def member(ctx, *args):
 
       # Else only a single member should be interacted with
       else:
-      
         try:
+          # Removing from position
+          if member.isdigit():
+              sorted_member_list = []
+
+            for ID, value in scoreboards[str(ctx.message.guild.id)][scoreboard_name]['participants_scores'].items():
+              sorted_member_list.append([ID, value])
+            
+            # TODO: Check settings for how to sort the scoreboard
+            sorted_member_list.sort(key=lambda x:int(x[1]), reverse=True)
+
+            if (int(member)) <= len(sorted_member_list):
+              member_at_pos = sorted_member_list[int(member) - 1]
+
+            member = member_at_pos[0]            
+
           user = client.get_user(int(''.join(c for c in member if c.isdigit())))
         except:
           user = None
@@ -240,6 +254,9 @@ async def member(ctx, *args):
         #So just default it to <@user_id> instead of <@!user_id>
         if isinstance(cur_member, discord.member.Member):
           cur_member = "<@" + str(cur_member.id) + ">"
+        
+
+
 
 
 
@@ -754,7 +771,7 @@ async def help(ctx, *args):
 
     embed.add_field(name="s!show", value="Displays a scoreboard.\n`s!show [scoreboard]`", inline=False)
 
-    embed.add_field(name="s!member", value="Adds or removes members in a scoreboard.\n`s!member (add/remove) [@member|@role] [scoreboard_name]`", inline=False)
+    embed.add_field(name="s!member", value="Adds or removes members in a scoreboard.\n`s!member (add/remove) [@member|@role|position] [scoreboard_name]`", inline=False)
 
     embed.add_field(name="s!points", value="Add, remove or set points in a scoreboard.\n`s!points (add|remove|set) [@member|@role] [scoreboard_name]`", inline=False)
 
