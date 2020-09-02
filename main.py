@@ -225,7 +225,7 @@ async def member(ctx, *args):
         try:
           # Removing from position
           if member.isdigit():
-              sorted_member_list = []
+            sorted_member_list = []
 
             for ID, value in scoreboards[str(ctx.message.guild.id)][scoreboard_name]['participants_scores'].items():
               sorted_member_list.append([ID, value])
