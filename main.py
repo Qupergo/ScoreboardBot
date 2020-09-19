@@ -411,7 +411,7 @@ async def show(ctx, *args):
       #Make a sorted list of the members by their points
       for key, value in scoreboards[str(ctx.message.guild.id)][scoreboard_name]['participants_scores'].items():
         member_order.append([key, value])
-      member_order.sort(key=lambda x:int(x[1]), reverse=True)
+      member_order.sort(key=lambda x:float(x[1]), reverse=True)
 
       iteration = 0
       pages = []
