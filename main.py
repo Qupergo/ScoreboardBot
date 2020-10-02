@@ -14,18 +14,16 @@ load_dotenv()
 DEFAULT_MESSAGE_PREFIX = "s!"
 
 
+dbl_token = os.environ.get("DBL_TOKEN")
 
 class TopGG(commands.Cog):
     """Handles interactions with the top.gg API"""
 
     def __init__(self, bot):
         self.bot = bot
-        self.token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY0MTIyOTE1MzQzMzI4ODcyNCIsImJvdCI6dHJ1ZSwiaWF0IjoxNTc2MTYzNzk4fQ._imK5bBS2eeLyIXiolADEfeyTliaTrHYI-B05ECV58Q' # set this to your DBL token
+        self.token = dbl_token # set this to your DBL token
         self.dblpy = dbl.DBLClient(self.bot, self.token, autopost=True) # Autopost will post your guild count every 30 minutes
     
-    @commands.Cog.listener()
-    async def on_guild_post():
-        print("Server count posted successfully")
 
 def setup(bot):
     bot.add_cog(TopGG(bot))
