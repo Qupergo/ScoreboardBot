@@ -6,8 +6,9 @@ from discord.ext.commands import Bot
 
 from keep_alive import keep_alive
 import dbl
-from discord.ext import commands
+from discord.ext import commands, tasks
 from dotenv import load_dotenv
+import logging
 
 load_dotenv()
 
@@ -16,17 +17,31 @@ DEFAULT_MESSAGE_PREFIX = "s!"
 
 dbl_token = os.environ.get("DBL_TOKEN")
 
+
 class TopGG(commands.Cog):
     """Handles interactions with the top.gg API"""
 
     def __init__(self, bot):
         self.bot = bot
-        self.token = dbl_token # set this to your DBL token
-        self.dblpy = dbl.DBLClient(self.bot, self.token, autopost=True) # Autopost will post your guild count every 30 minutes
-    
+        self.token = dbl_token
+        self.dblpy = dbl.DBLClient(self.bot, self.token)
+
+
+    @tasks.loop(minutes=1.0)
+    async def update_stats(self):
+        """This function runs every 30 minutes to automatically update your server count"""
+        logger.info('Attempting to post server count')
+        try:
+            await self.dblpy.post_guild_count()
+            logger.info('Posted server count ({})'.format(self.dblpy.guild_count()))
+        except Exception as e:
+            logger.exception('Failed to post server count\n{}: {}'.format(type(e).__name__, e)) 
 
 def setup(bot):
+    global logger
+    logger = logging.getLogger('bot')
     bot.add_cog(TopGG(bot))
+
 
 
 def prefix(bot, message):
