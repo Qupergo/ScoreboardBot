@@ -38,6 +38,7 @@ class TopGG(commands.Cog):
             logger.exception('Failed to post server count\n{}: {}'.format(type(e).__name__, e)) 
 
 def setup(bot):
+
     global logger
     logger = logging.getLogger('bot')
     bot.add_cog(TopGG(bot))
@@ -52,7 +53,7 @@ def prefix(bot, message):
 
 client = Bot(command_prefix=prefix)
 client.remove_command('help')
-
+setup(client)
 
 async def check_permissions(ctx, *args):
   permissions = ctx.message.channel.permissions_for(ctx.message.author)
