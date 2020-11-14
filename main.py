@@ -87,7 +87,9 @@ async def change_prefix(ctx, *args):
 
 @client.event
 async def on_ready():
+  ##Starting
   print("Im in")
+
   print(client.user)
   guilds = client.guilds
   memberSum = 0
@@ -97,6 +99,7 @@ async def on_ready():
 
   for guild in guilds:
     memberSum += len(guild.members)
+    print(guild.members)
     topGuilds.append(guild)
     iteration += 1
   topGuilds = sorted(topGuilds, reverse=True, key=lambda x:len(x.members))
@@ -109,16 +112,16 @@ async def on_ready():
   print(f"Current amount of servers: {iteration}")
   
   await client.change_presence(activity=Activity(name=f" scoreboards on {len(guilds)} servers", type=ActivityType.watching))
+  #Starting End
 
-  with open('scoreboards.txt', "r") as scoreboards_orig:
-    scoreboards = json.load(scoreboards_orig)
-    for guild in guilds:
-      if str(guild.id) not in scoreboards.keys():
-        scoreboards[guild.id] = {}
+  for guild in guilds:
+    #open_scoreboard makes sure the guild has a file
+    open_scoreboard(guild)
+    with open('scoreboards.txt', "r") as scoreboards_orig:
+        scoreboards = json.load(scoreboards_orig)
+        save_scoreboards(scoreboards[str(guild.id)], guild)
+      
 
-  with open('scoreboards.txt', "w") as scoreboards_orig:
-    json.dump(scoreboards, scoreboards_orig, indent=4)
-  
 
   with open('prefixes.json', "r") as prefixFile:
         prefixes = json.load(prefixFile)
@@ -134,16 +137,8 @@ async def on_ready():
 async def on_guild_join(guild):
     await client.change_presence(activity=Activity(name=f" scoreboards on {len(client.guilds)} servers", type=ActivityType.watching))
 
-    #Add server id to scoreboards
-    with open('scoreboards.txt', "r") as scoreboards_orig:
-      scoreboards = json.load(scoreboards_orig)
-      for guild in client.guilds:
-        if str(guild.id) not in scoreboards.keys():
-          scoreboards[guild.id] = {}
-
-    with open('scoreboards.txt', "w") as scoreboards_orig:
-      json.dump(scoreboards, scoreboards_orig, indent=4)
-    
+    for guild in client.guilds:
+      open_scoreboard(guild)
     
     with open('prefixes.json', "r") as prefixFile:
         prefixes = json.load(prefixFile)
@@ -175,13 +170,10 @@ async def create(ctx, *args):
     await ctx.send(":x: Not enough arguments.\n" + correct_usage)
     return
 
-  with open('scoreboards.txt', "r") as scoreboards_orig:
-    scoreboards = json.load(scoreboards_orig)
-    cur_scoreboards = scoreboards[str(ctx.message.guild.id)]
-    cur_scoreboards[scoreboard_name] = {'name':scoreboard_name, 'guild_id':str(ctx.message.guild.id), 'participants_scores':{}}
-    scoreboards[str(ctx.message.guild.id)] = cur_scoreboards
+  scoreboards = open_scoreboard(ctx.message.guild)
 
-  save_scoreboards(scoreboards, ctx=ctx)
+  scoreboards[scoreboard_name] = {'name':scoreboard_name, 'guild_id':str(ctx.message.guild.id), 'participants_scores':{}}
+  save_scoreboards(scoreboards, ctx.message.guild)
   await ctx.send(f':white_check_mark: Created a scoreboard with the name {scoreboard_name}')
 
 #Member
@@ -200,56 +192,49 @@ async def member(ctx, *args):
     await ctx.send("Incorrect option for `s!add`. Use either `add` or `remove`\n" + correct_usage)
     return
 
-
-  with open('scoreboards.txt', "r") as scoreboards_orig:
-
-    scoreboards = json.load(scoreboards_orig)
-
-
-    # Make sure the scoreboard exists
-    if scoreboard_name not in scoreboards[str(ctx.message.guild.id)].keys():
-      await ctx.send(f":x: The scoreboard `{scoreboard_name}` does not exist.")
-      return
+  scoreboards = open_scoreboard(ctx.message.guild)
+  if scoreboard_name not in scoreboards.keys():
+    await ctx.send(f":x: The scoreboard `{scoreboard_name}` does not exist.")
+    return
     
+  roles = ctx.message.role_mentions
+  members_to_interact = []
 
-    roles = ctx.message.role_mentions
-    members_to_interact = []
+  try:
+    # If trying to add with role
+    if len(roles) > 0:
+      role = roles[0]
+      for cur_member in ctx.message.guild.members:
+        for cur_role in cur_member.roles:
+          if role == cur_role:
+            members_to_interact.append(cur_member)
+            break
 
-    try:
-      # If trying to add with role
-      if len(roles) > 0:
-        role = roles[0]
-        for cur_member in ctx.message.guild.members:
-          for cur_role in cur_member.roles:
-            if role == cur_role:
-              members_to_interact.append(cur_member)
-              break
+    # Else only a single member should be interacted with
+    else:
+      try:
+        # Removing from position
+        if member.isdigit():
+          sorted_member_list = []
 
-      # Else only a single member should be interacted with
+          for ID, value in scoreboards[scoreboard_name]['participants_scores'].items():
+            sorted_member_list.append([ID, value])
+          
+          # TODO: Check settings for how to sort the scoreboard
+          sorted_member_list.sort(key=lambda x:int(x[1]), reverse=True)
+
+          if (int(member)) <= len(sorted_member_list):
+            member_at_pos = sorted_member_list[int(member) - 1]
+
+          member = member_at_pos[0]
+
+        user = client.get_user(int(''.join(c for c in member if c.isdigit())))
+      except:
+        user = None
+      if user == None:
+        members_to_interact = [member]
       else:
-        try:
-          # Removing from position
-          if member.isdigit():
-            sorted_member_list = []
-
-            for ID, value in scoreboards[str(ctx.message.guild.id)][scoreboard_name]['participants_scores'].items():
-              sorted_member_list.append([ID, value])
-            
-            # TODO: Check settings for how to sort the scoreboard
-            sorted_member_list.sort(key=lambda x:int(x[1]), reverse=True)
-
-            if (int(member)) <= len(sorted_member_list):
-              member_at_pos = sorted_member_list[int(member) - 1]
-
-            member = member_at_pos[0]            
-
-          user = client.get_user(int(''.join(c for c in member if c.isdigit())))
-        except:
-          user = None
-        if user == None:
-          members_to_interact = [member]
-        else:
-          members_to_interact = ["<@" + str(user.id) + ">"]
+        members_to_interact = ["<@" + str(user.id) + ">"]
 
 
 
@@ -261,32 +246,27 @@ async def member(ctx, *args):
           cur_member = "<@" + str(cur_member.id) + ">"
         
 
-
-
-
-
         if option.lower() in ["add", "+"]:
           # If the member is already in the scoreboard, don't add them again
-          if cur_member in scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"].keys():
+          if cur_member in scoreboards[scoreboard_name]["participants_scores"].keys():
             continue
-          scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][cur_member] = 0
+          scoreboards[scoreboard_name]["participants_scores"][cur_member] = 0
         
         elif option.lower() in ["remove", "-"]:
           # If the member is not in the scoreboard you can't remove them.
-          # But if you are removing by role it is completly fine to try and remove a couple roles who aren't one the scoreboard.
+          # But if you are removing by role it is completly fine to try and remove a couple member who aren't on the scoreboard.
           # Since expected behaviour is to remove everyone with that role.
-          if not cur_member in scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"].keys() and len(members_to_interact) == 1:
+          if not cur_member in scoreboards[scoreboard_name]["participants_scores"].keys() and len(members_to_interact) == 1:
             await ctx.send(f":x: The member {cur_member} does not seem to exist in that scoreboard")
             return
 
-          del scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][cur_member]
+          del scoreboards[scoreboard_name]["participants_scores"][cur_member]
 
-    except KeyError:
+  except KeyError:
+    await ctx.send(f":x: The member {member} does not seem to exist in that scoreboard.")
+    return
 
-        await ctx.send(f":x: The member {member} does not seem to exist in that scoreboard.")
-        return
-
-  save_scoreboards(scoreboards, ctx=ctx)
+  save_scoreboards(scoreboards, ctx.message.guild)
 
   if option.lower() == "remove":
     await ctx.send(f':white_check_mark: removed {member} from `{scoreboard_name}`')
@@ -295,6 +275,7 @@ async def member(ctx, *args):
     await ctx.send(f":white_check_mark: added {member} to `{scoreboard_name}`")
 
 
+#points
 @client.command(name='points',
                 aliases=['point', 'p'])
 @commands.check(check_permissions)
@@ -315,77 +296,72 @@ async def points(ctx, *args):
     await ctx.send(f":x: Incorrect option for `s!points` {option}\nPlease use either `add`, `remove` or `set`\n" + correct_usage)
     return
   
-  with open('scoreboards.txt', "r") as scoreboards_orig:
+  scoreboards = open_scoreboard(ctx.message.guild)
 
-    scoreboards = json.load(scoreboards_orig)
-    try:
-      allScoreboardMembers = scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"].keys()
-    except KeyError:
-      await ctx.send(f":x: The scoreboard `{scoreboard_name}` does not seem to exist.")
-      return
+  if scoreboard_name not in scoreboards.keys():
+    await ctx.send(f":x: The scoreboard `{scoreboard_name}` does not seem to exist.")
+    return
+  
 
-    #Check if a role has been mentioned
-    roles = ctx.message.role_mentions
-    membersAffected = []
+  scoreboard_members = scoreboards[scoreboard_name]["participants_scores"].keys()
 
-    if len(roles) > 0:
-      #Add all members with the role to membersAffected
-      role = roles[0]
-      for cur_member in allScoreboardMembers:
-        for server_member in ctx.message.guild.members:
-          if cur_member == ("<@" + str(server_member.id) + ">"):
-            cur_member = server_member
-            break
-        else:
-          continue
-        for cur_role in cur_member.roles:
-          if role == cur_role:
-            membersAffected.append(cur_member)
-            break
+  #Check if a role has been mentioned
+  roles = ctx.message.role_mentions
+  membersAffected = []
 
-      if len(membersAffected) == 0:
-        await ctx.send(f":x: There does not seem to be anyone with the role {role} in `{scoreboard_name}`")
-        return
-    else:
-      # If only a single user is mentioned
-      try:
-        user = client.get_user(int(''.join(c for c in member if c.isdigit())))
-      except:
-        user = None
-      if user == None:
-        membersAffected = [member]
+  if len(roles) > 0:
+    #Add all members with the role to membersAffected
+    role = roles[0]
+    for cur_member in scoreboard_members:
+      for server_member in ctx.message.guild.members:
+        if cur_member == ("<@" + str(server_member.id) + ">"):
+          cur_member = server_member
+          break
       else:
-        membersAffected = ["<@" + str(user.id) + ">"]
+        continue
+      for cur_role in cur_member.roles:
+        if role == cur_role:
+          membersAffected.append(cur_member)
+          break
+
+    if len(membersAffected) == 0:
+      await ctx.send(f":x: There does not seem to be anyone with the role {role} in `{scoreboard_name}`")
+      return
+  else:
+    # If only a single user is mentioned
+    try:
+      user = client.get_user(int(''.join(c for c in member if c.isdigit())))
+    except:
+      user = None
+    if user == None:
+      membersAffected = [member]
+    else:
+      membersAffected = ["<@" + str(user.id) + ">"]
+  
+  for cur_member in membersAffected:
+    if isinstance(cur_member, discord.member.Member):
+      cur_member = "<@" + str(cur_member.id) + ">"
     
-    for cur_member in membersAffected:
-      if isinstance(cur_member, discord.member.Member):
-        cur_member = "<@" + str(cur_member.id) + ">"
-      
-      try:
-        scoreboards[str(ctx.message.guild.id)][scoreboard_name]
-      except KeyError:
-        await ctx.send(f":x: The scoreboard `{scoreboard_name}` does not seem to exist\n" + correct_usage)
+    try:
+      if option == "add":
+        scoreboards[scoreboard_name]["participants_scores"][cur_member] += points
+      elif option == "remove":
+        scoreboards[scoreboard_name]["participants_scores"][cur_member] -= points
+      elif option == "set":
+        scoreboards[scoreboard_name]["participants_scores"][cur_member] = points
+    except KeyError:
+      if len(membersAffected) == 1:
+        await ctx.send(f":x: {membersAffected[0]} does not seem to exist in `{scoreboard_name}`")
         return
-      try:
-        if option == "add":
-          scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][cur_member] += points
-        elif option == "remove":
-          scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][cur_member] -= points
-        elif option == "set":
-          scoreboards[str(ctx.message.guild.id)][scoreboard_name]["participants_scores"][cur_member] = points
-      except KeyError:
-        if len(membersAffected) == 1:
-          await ctx.send(f":x: {membersAffected[0]} does not seem to exist in `{scoreboard_name}`")
-          return
 
-    save_scoreboards(scoreboards, ctx=ctx)
+  save_scoreboards(scoreboards, ctx.message.guild)
 
-    if option == "add":
-      await ctx.send(f":white_check_mark: Successfully added {points} point(s) to {member}")
-    elif option == "remove":
-      await ctx.send(f":white_check_mark: Successfully removed {points} point(s) from {member}")
-    elif option == "set":
-      await ctx.send(f":white_check_mark: Successfully set {member} points to {points}")
+  if option == "add":
+    await ctx.send(f":white_check_mark: Successfully added {points} point(s) to {member}")
+  elif option == "remove":
+    await ctx.send(f":white_check_mark: Successfully removed {points} point(s) from {member}")
+  elif option == "set":
+    await ctx.send(f":white_check_mark: Successfully set {member} points to {points}")
 
 
 
@@ -407,168 +383,164 @@ async def show(ctx, *args):
       page_number = int(args[1])
     except:
       pass
+    
+  scoreboards = open_scoreboard(ctx.message.guild)
 
-  with open('scoreboards.txt', "r") as scoreboards_orig:
-    scoreboards = json.load(scoreboards_orig)
+  member_order = []
+  if scoreboard_name not in scoreboards.keys():
+    await ctx.send(f":x: `{scoreboard_name}` does not seem to exist on this server.\n" + correct_usage)
+    return
 
-    member_order = []
-    try:
-      #Make a sorted list of the members by their points
-      for key, value in scoreboards[str(ctx.message.guild.id)][scoreboard_name]['participants_scores'].items():
-        member_order.append([key, value])
-      member_order.sort(key=lambda x:float(x[1]), reverse=True)
+  #Make a sorted list of the members by their points
+  for key, value in scoreboards[scoreboard_name]['participants_scores'].items():
+    member_order.append([key, value])
+  member_order.sort(key=lambda x:float(x[1]), reverse=True)
 
-      iteration = 0
-      pages = []
-      try:
-        settings = scoreboards[str(ctx.message.guild.id)][scoreboard_name]["settings"]
-      except:
-        scoreboards[str(ctx.message.guild.id)][scoreboard_name]["settings"] = default_settings()
-        settings = scoreboards[str(ctx.message.guild.id)][scoreboard_name]["settings"]
+  iteration = 0
+  pages = []
+  try:
+    settings = scoreboards[scoreboard_name]["settings"]
+  except:
+    scoreboards[scoreboard_name]["settings"] = default_settings()
+    settings = scoreboards[scoreboard_name]["settings"]
 
 
 
-      members_per_page = int(settings["members_per_page"])
-      formatting = settings["format"]
+  members_per_page = int(settings["members_per_page"])
+  formatting = settings["format"]
 
+  current_page = []
+
+  for key, value in member_order:
+    current_page.append([key, value])
+    iteration += 1
+
+    if iteration == members_per_page:
+      pages.append(current_page.copy())
       current_page = []
+      iteration = 0
+      
 
-      for key, value in member_order:
-        current_page.append([key, value])
-        iteration += 1
+  if iteration > 0:
+    pages.append(current_page)
 
-        if iteration == members_per_page:
-          pages.append(current_page.copy())
-          current_page = []
-          iteration = 0
-          
+  if (page_number-1) > len(pages) or (page_number - 1) < 0:
+    page_number = len(pages)
 
-      if iteration > 0:
-        pages.append(current_page)
+  if len(pages) == 0:
+    await ctx.send(f"Unfortunately, `{scoreboard_name}` is empty, there is nothing to show.")
+    return
 
-      if (page_number-1) > len(pages) or (page_number - 1) < 0:
-        page_number = len(pages)
+  # Default
+  if page_number == 1:
+    embed = Embed(title=f"{scoreboard_name}", colour=discord.Colour(0x00FFFF))
+  else:
+    embed = Embed(colour=discord.Colour(0x00FFFF))
+  embed.add_field(name="Page", value=f"{page_number}/{len(pages)}")
+  
+  current_page = pages[page_number - 1]
 
-      if len(pages) == 0:
-        await ctx.send(f"Unfortunately, `{scoreboard_name}` is empty, there is nothing to show.")
-        return
+  #
+  #TABLE
+  #
+  if formatting == "table":
+    default_table = """
+    ╔r╦m╦p╗
+    ║l1000║n1000║s1000║
+    ╠r╬m╬p╣
+    ║l1001║n1001║s1001║
+    ╠r╬m╬p╣
+    ║l1002║n1002║s1002║
+    ╚r╩m╩p╝
+    """
+    table = ""
 
-      # Default
-      if page_number == 1:
-        embed = Embed(title=f"{scoreboard_name}", colour=discord.Colour(0x00FFFF))
+    # To not have duplicates
+    offset = 1000
+
+    # This will be the minimum length of each row
+    memberLength = len("member")
+    pointsLength = len("points")
+    rankLength = len("rank")
+
+    tableLenghtener = "═"
+    current_page.insert(0, ["Member", "Points"])
+    usernames = []
+    for index, member_points in enumerate(current_page, offset):
+      member = member_points[0]
+      points = member_points[1]
+
+
+      username = await get_username_from_id(member)
+      
+      usernames.append(username)
+      # Make the length equal the longest name
+      if len(username) > memberLength:
+        memberLength = len(username)
+      
+      if (len(str(points))) > pointsLength:
+        pointsLength = len(str(points))
+      
+      if (index - offset) == 0:
+        table += f"╔r╦m╦p╗\n"
+        table += f"║l{index}║n{index}║s{index}║\n"
+        table += f"╠r╬m╬p╣\n"
+      elif (index - offset) == (len(current_page) - 1):
+        table += f"║l{index}║n{index }║s{index}║\n"
+        table += "╚r╩m╩p╝\n"
       else:
-        embed = Embed(colour=discord.Colour(0x00FFFF))
-      embed.add_field(name="Page", value=f"{page_number}/{len(pages)}")
-      
-      current_page = pages[page_number - 1]
+        table += f"║l{index}║n{index}║s{index}║\n"
+        table += "╠r╬m╬p╣\n"
+    
+    # Add 2 spaces to create margin
+    margin = 2
+    memberLength += margin 
+    pointsLength += margin
+    rankLength += margin
+    
+    table = table.replace("r", tableLenghtener*rankLength)
+    table = table.replace("m", tableLenghtener*memberLength)
+    table = table.replace("p", tableLenghtener*pointsLength)
+    
 
-      #
-      #TABLE
-      #
-      if formatting == "table":
-        default_table = """
-        ╔r╦m╦p╗
-        ║l1000║n1000║s1000║
-        ╠r╬m╬p╣
-        ║l1001║n1001║s1001║
-        ╠r╬m╬p╣
-        ║l1002║n1002║s1002║
-        ╚r╩m╩p╝
-        """
-        table = ""
+    for index, member_points in enumerate(current_page, offset):
+      member = member_points[0]
+      points = member_points[1]
+      table = table.replace(f"n{index}", f" {usernames[index - offset]}".ljust(memberLength, " "))
+      table = table.replace(f"s{index}", f"{str(points)}".center(pointsLength, " "))
 
-        # To not have duplicates
-        offset = 1000
-
-        # This will be the minimum length of each row
-        memberLength = len("member")
-        pointsLength = len("points")
-        rankLength = len("rank")
-
-        tableLenghtener = "═"
-        current_page.insert(0, ["Member", "Points"])
-        usernames = []
-        for index, member_points in enumerate(current_page, offset):
-          member = member_points[0]
-          points = member_points[1]
-
-
-          username = await get_username_from_id(member)
-          
-          usernames.append(username)
-          # Make the length equal the longest name
-          if len(username) > memberLength:
-            memberLength = len(username)
-          
-          if (len(str(points))) > pointsLength:
-            pointsLength = len(str(points))
-          
-          if (index - offset) == 0:
-            table += f"╔r╦m╦p╗\n"
-            table += f"║l{index}║n{index}║s{index}║\n"
-            table += f"╠r╬m╬p╣\n"
-          elif (index - offset) == (len(current_page) - 1):
-            table += f"║l{index}║n{index }║s{index}║\n"
-            table += "╚r╩m╩p╝\n"
-          else:
-            table += f"║l{index}║n{index}║s{index}║\n"
-            table += "╠r╬m╬p╣\n"
-        
-        # Add 2 spaces to create margin
-        margin = 2
-        memberLength += margin 
-        pointsLength += margin
-        rankLength += margin
-        
-        table = table.replace("r", tableLenghtener*rankLength)
-        table = table.replace("m", tableLenghtener*memberLength)
-        table = table.replace("p", tableLenghtener*pointsLength)
-        
-
-        for index, member_points in enumerate(current_page, offset):
-          member = member_points[0]
-          points = member_points[1]
-          table = table.replace(f"n{index}", f" {usernames[index - offset]}".ljust(memberLength, " "))
-          table = table.replace(f"s{index}", f"{str(points)}".center(pointsLength, " "))
-
-          if (index - offset) == 0:
-            table = table.replace(f"l{index}", " Rank".ljust(rankLength, " "))
-        
-          else:
-            table = table.replace(f"l{index}", f" {(index - offset) + (page_number-1) * members_per_page}.".ljust(rankLength, " "))
-        
-        embed.add_field(name="_", value=f"```{table}```", inline=False)
-
-      #
-      # Classic
-      #
-      elif formatting == "classic":
-        title = "💠 🔷 🔹🔹 **" + scoreboard_name + "** 🔹🔹 🔷 💠"
-        point_prefix = "🔹"
-        scoreboard_classic = ""
-        for index, member_points in enumerate(current_page):
-          member = member_points[0]
-          points = member_points[1]
-          username = await get_username_from_id(member)
-
-          scoreboard_classic += f"{index+1}. {username}\n{point_prefix} {points}\n\n"
-        embed.add_field(name="_", value=f"{scoreboard_classic}", inline=False)
-        embed.title = title
-      
-
-
-
-      if (len(embed) >= 1024):
-        await ctx.send("Scoreboard exceeds discord's character limit\nYou can try to lower the members per page or change the formatting using `s!settings`")
-        return
+      if (index - offset) == 0:
+        table = table.replace(f"l{index}", " Rank".ljust(rankLength, " "))
+    
       else:
-        message = await ctx.send(embed=embed)
-      
+        table = table.replace(f"l{index}", f" {(index - offset) + (page_number-1) * members_per_page}.".ljust(rankLength, " "))
+    
+    embed.add_field(name="_", value=f"```{table}```", inline=False)
+
+  #
+  # Classic
+  #
+  elif formatting == "classic":
+    title = "💠 🔷 🔹🔹 **" + scoreboard_name + "** 🔹🔹 🔷 💠"
+    point_prefix = "🔹"
+    scoreboard_classic = ""
+    for index, member_points in enumerate(current_page):
+      member = member_points[0]
+      points = member_points[1]
+      username = await get_username_from_id(member)
+
+      scoreboard_classic += f"{index+1}. {username}\n{point_prefix} {points}\n\n"
+    embed.add_field(name="_", value=f"{scoreboard_classic}", inline=False)
+    embed.title = title
+  
 
 
 
-    except KeyError:
-      await ctx.send(f":x: `{scoreboard_name}` does not seem to exist on this server.\n" + correct_usage)
+  if (len(embed) >= 1024):
+    await ctx.send("Scoreboard exceeds discord's character limit\nYou can try to lower the members per page or change the formatting using `s!settings`")
+    return
+  else:
+    message = await ctx.send(embed=embed)
 
 #ResetScoreboard
 @client.command(name='resetScoreboard',
@@ -582,23 +554,18 @@ async def resetScoreboard(ctx, *args):
     await ctx.send(":x: Invalid arguments.\n" + correct_usage)
     return
 
-  with open('scoreboards.txt', "r") as scoreboards_orig:
+  scoreboards = open_scoreboard(ctx.message.guild)
+  if scoreboard_name not in scoreboards.keys():
+    await ctx.send(f":x: `{scoreboard_name}` does not seem to exist.")
+    return
+  
 
-    # Load scoreboard
-    scoreboards = json.load(scoreboards_orig)
-    scoreboard = []
-    try:
-      # Find scoreboard
-      scoreboard = scoreboards[str(ctx.message.guild.id)][scoreboard_name]
-    except KeyError:
-      # If the key can't be found
-      await ctx.send(f":x: `{scoreboard_name}` does not seem to exist.")
-      return
 
-    for key in scoreboard["participants_scores"].keys():
-      scoreboard["participants_scores"][key] = 0
 
-  save_scoreboards(scoreboards, ctx=ctx)
+  for key in scoreboards[scoreboard_name]["participants_scores"].keys():
+    scoreboards[scoreboard_name]["participants_scores"][key] = 0
+
+  save_scoreboards(scoreboards, ctx.message.guild)
 
   await ctx.send(f":white_check_mark: Reset all values in `{scoreboard_name}` to 0.")
 
@@ -609,11 +576,10 @@ async def resetScoreboard(ctx, *args):
 async def list(ctx, *args):
   correct_usage = "Correct usage is `s!list`"
 
-  with open('scoreboards.txt', "r") as scoreboards_orig:
-    scoreboards = json.load(scoreboards_orig)
-    cur_scoreboards = scoreboards[str(ctx.message.guild.id)]
 
-  scoreboards_display = f"There are currently {len(cur_scoreboards)} scoreboards on this server\n" + "".join([("\n`"+scoreboard+"`") for scoreboard in cur_scoreboards])
+  scoreboards = open_scoreboard(ctx.message.guild)
+
+  scoreboards_display = f"There are currently {len(scoreboards)} scoreboards on this server\n" + "".join([("\n`"+scoreboard+"`") for scoreboard in scoreboards])
   await ctx.send(scoreboards_display)
 
 
@@ -632,20 +598,15 @@ async def removeScoreboard(ctx, *args):
     await ctx.send(":x: Invalid arguments.\n" + correct_usage)
     return
 
-  with open('scoreboards.txt', "r") as scoreboards_orig:
+  scoreboards = open_scoreboard(ctx.message.guild)
 
-    # Load scoreboard
-    scoreboards = json.load(scoreboards_orig)
-    scoreboard = []
-    try:
-      # Find scoreboard
-      del scoreboards[str(ctx.message.guild.id)][scoreboard_name]
-    except KeyError:
-      # If the key can't be found
-      await ctx.send(f":x: `{scoreboard_name}` does not seem to exist.")
-      return
+  if scoreboard_name not in scoreboards.keys():
+    await ctx.send(f":x: `{scoreboard_name}` does not seem to exist.")
+    return
 
-  save_scoreboards(scoreboards, ctx=ctx)
+  del scoreboards[scoreboard_name]
+
+  save_scoreboards(scoreboards, ctx.message.guild)
 
   await ctx.send(f":white_check_mark: Removed `{scoreboard_name}`")
 
@@ -686,35 +647,31 @@ async def settings(ctx, *args):
       return
 
 
+  scoreboards = open_scoreboard(ctx.message.guild)
 
-  with open('scoreboards.txt', "r") as scoreboards_orig:
-
-    # Load scoreboard
-    scoreboards = json.load(scoreboards_orig)
-    if scoreboard_name.lower() == "all":
-      for key in scoreboards[str(ctx.guild.id)].keys():
-        # If there is no setting page
-        # Just create one with default settings
-        if "settings" not in scoreboards[str(ctx.guild.id)][key].keys():
-          scoreboards[str(ctx.guild.id)][key]["settings"] = default_settings()
-        
-        scoreboards[str(ctx.guild.id)][key]["settings"][setting] = change
-
-    elif scoreboard_name in scoreboards[str(ctx.guild.id)].keys():
+  if scoreboard_name.lower() == "all":
+    for scoreboard_name in scoreboards.keys():
       # If there is no setting page
       # Just create one with default settings
-      if "settings" not in scoreboards[str(ctx.guild.id)][scoreboard_name].keys():
-        scoreboards[str(ctx.guild.id)][scoreboard_name]["settings"] = default_settings()
+      if "settings" not in scoreboards[scoreboard_name].keys():
+        scoreboards[scoreboard_name]["settings"] = default_settings()
       
-      scoreboards[str(ctx.guild.id)][scoreboard_name]["settings"][setting] = change
+      scoreboards[scoreboard_name]["settings"][setting] = change
 
-    else:
-      await ctx.send(f":x: A scoreboard with the name `{scoreboard_name}` does not seem to exist.")
-      return
+  elif scoreboard_name in scoreboards.keys():
 
-    save_scoreboards(scoreboards, ctx=ctx)
+    if "settings" not in scoreboards[scoreboard_name].keys():
+      scoreboards[scoreboard_name]["settings"] = default_settings()
+    
+    scoreboards[scoreboard_name]["settings"][setting] = change
 
-    await ctx.send(f":white_check_mark: Sucessfully changed `{setting}` to `{change}`")
+  else:
+    await ctx.send(f":x: A scoreboard with the name `{scoreboard_name}` does not seem to exist.")
+    return
+
+  save_scoreboards(scoreboards, ctx.message.guild)
+
+  await ctx.send(f":white_check_mark: Sucessfully changed `{setting}` to `{change}`")
 
     
 
@@ -727,8 +684,13 @@ def default_settings():
 
 async def get_username_from_id(member):
   # Member is in format <@id> or <@!id> if it is a mentioned user
+  print("Member: " + member)
   try:
-    user = client.get_user(int(''.join(c for c in member if c.isdigit())))
+    id = int(''.join(c for c in member if c.isdigit()))
+    user = client.get_user(id)
+    print("Found user")
+    print(user)
+    print(id)
   except:
     user = None
   # If user is not found, replace with the member since it is probably not in the format above
@@ -736,16 +698,31 @@ async def get_username_from_id(member):
     username = member
   else:
     username = "@" + user.name
+    print(user.name)
   return username
 
-def save_scoreboards(scoreboards, ctx=None):
-    try:
-      with open('scoreboards.txt', "w") as scoreboards_orig:
-        json.dump(scoreboards, scoreboards_orig, indent=4)
-    except:
-      if ctx == None:
-        return
-      ctx.send(":x: Internal server error, count to 10 and try again")
+#save_scoreboards
+def save_scoreboards(scoreboards, guild):
+  with open(os.path.join("scoreboards/", str(guild.id) + ".txt"), "w") as scoreboards_orig:
+      json.dump(scoreboards, scoreboards_orig, indent=4)
+
+#open_scoreboard
+def open_scoreboard(guild, create_new_if_missing=True):
+
+  scoreboards = "{}"
+  try:
+    with open(os.path.join("scoreboards/", str(guild.id) + ".txt"), "r") as scoreboards_orig:
+      scoreboards = json.load(scoreboards_orig)
+  except FileNotFoundError:
+    if create_new_if_missing:
+      with open(os.path.join("scoreboards/", str(guild.id) + ".txt"), "w") as scoreboards_orig:
+        scoreboards_orig.write("{}")
+    else:
+      scoreboards = None
+
+  return scoreboards
+
+
 
 #Help
 @client.command(pass_context=True)
@@ -893,6 +870,7 @@ async def removePoints(ctx, *args):
   else:
     await ctx.send(f'Removed {points} points from {member}, new score is {new_score}.\nThis command has been deprecated, consider using `s!points remove` instead.')
 
+saving_scoreboard = False
 
 token = os.environ.get("DISCORD_BOT_SECRET")
 
