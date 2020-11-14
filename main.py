@@ -718,6 +718,7 @@ def open_scoreboard(guild, create_new_if_missing=True):
   try:
     with open(os.path.join("scoreboards/", str(guild.id) + ".txt"), "r") as scoreboards_orig:
       scoreboards = json.load(scoreboards_orig)
+
   except FileNotFoundError:
     if create_new_if_missing:
       with open(os.path.join("scoreboards/", str(guild.id) + ".txt"), "w") as scoreboards_orig:
@@ -776,6 +777,7 @@ async def help(ctx, *args):
 
     embed.add_field(name="s!settings", value="Allows you to change various settings for Scoreboarder\n`s!settings [setting] [scoreboard/all] [change]` \nwrite `s!help settings` for more info")
 
+    embed.add_field(name="Server error", value="Due to a server error, a lot of scoreboards were lost. we have several backups but unfortunately, most of them also turned corrupt. We have restored the scoreboards from the latest non-corrupt backup but there has been a lot of data loss. I am incredibly sorry about this. We have taken precautions so that this will not happen again.")
   await ctx.send("Sent you a DM containing the help message.")
   await author.send(embed=embed)
 
