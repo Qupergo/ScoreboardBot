@@ -91,6 +91,7 @@ async def on_ready():
   print("Im in")
 
   print(client.user)
+"""
   guilds = client.guilds
   memberSum = 0
   iteration = 0
@@ -110,10 +111,10 @@ async def on_ready():
 
   print(f"This bot is used by a total of: {memberSum} members")
   print(f"Current amount of servers: {iteration}")
-  
+  """
   await client.change_presence(activity=Activity(name=f" scoreboards on {len(guilds)} servers", type=ActivityType.watching))
   #Starting End
-
+  print(len(guilds))
   for guild in guilds:
     #open_scoreboard makes sure the guild has a file
     open_scoreboard(guild)
