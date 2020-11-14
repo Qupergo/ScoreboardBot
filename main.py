@@ -93,6 +93,8 @@ async def on_ready():
   print(client.user)
   guilds = client.guilds
 
+  
+
   memberSum = 0
   iteration = 0
   topGuilds = []
@@ -100,7 +102,6 @@ async def on_ready():
 
   for guild in guilds:
     memberSum += len(guild.members)
-    print(guild.members)
     topGuilds.append(guild)
     iteration += 1
   topGuilds = sorted(topGuilds, reverse=True, key=lambda x:len(x.members))
@@ -111,16 +112,10 @@ async def on_ready():
 
   print(f"This bot is used by a total of: {memberSum} members")
   print(f"Current amount of servers: {iteration}")
-  
+
   await client.change_presence(activity=Activity(name=f" scoreboards on {len(guilds)} servers", type=ActivityType.watching))
   #Starting End
-  print(len(guilds))
-  for guild in guilds:
-    #open_scoreboard makes sure the guild has a file
-    open_scoreboard(guild)
-    with open('scoreboards.txt', "r") as scoreboards_orig:
-        scoreboards = json.load(scoreboards_orig)
-        save_scoreboards(scoreboards[str(guild.id)], guild)
+  
       
 
 
@@ -571,13 +566,21 @@ async def resetScoreboard(ctx, *args):
   await ctx.send(f":white_check_mark: Reset all values in `{scoreboard_name}` to 0.")
 
 
+#list
 @client.command(name='list',
                 aliases=[])
 @commands.check(check_permissions)
 async def list(ctx, *args):
   correct_usage = "Correct usage is `s!list`"
 
-
+  for guild in client.guilds:
+    #open_scoreboard makes sure the guild has a file
+    open_scoreboard(guild)
+    with open('scoreboards.txt', "r") as scoreboards_orig:
+        scoreboards = json.load(scoreboards_orig)
+        save_scoreboards(scoreboards[str(guild.id)], guild)
+  print(len(client.guilds))
+  
   scoreboards = open_scoreboard(ctx.message.guild)
 
   scoreboards_display = f"There are currently {len(scoreboards)} scoreboards on this server\n" + "".join([("\n`"+scoreboard+"`") for scoreboard in scoreboards])
