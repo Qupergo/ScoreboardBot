@@ -91,8 +91,9 @@ async def on_ready():
   print("Im in")
 
   print(client.user)
-"""
   guilds = client.guilds
+
+"""
   memberSum = 0
   iteration = 0
   topGuilds = []
