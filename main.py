@@ -101,6 +101,11 @@ async def on_ready():
   
 
   for guild in guilds:
+
+    # Make sure each guild has a file
+    open_scoreboard(guild.id)
+
+    # Gather some data
     memberSum += len(guild.members)
     topGuilds.append(guild)
     iteration += 1
@@ -112,6 +117,9 @@ async def on_ready():
 
   print(f"This bot is used by a total of: {memberSum} members")
   print(f"Current amount of servers: {iteration}")
+
+  
+  print(len(guilds))
 
   await client.change_presence(activity=Activity(name=f" scoreboards on {len(guilds)} servers", type=ActivityType.watching))
   #Starting End
@@ -133,6 +141,7 @@ async def on_ready():
 async def on_guild_join(guild):
     await client.change_presence(activity=Activity(name=f" scoreboards on {len(client.guilds)} servers", type=ActivityType.watching))
 
+    # Make sure all guilds have a file
     for guild in client.guilds:
       open_scoreboard(guild)
     
@@ -573,14 +582,6 @@ async def resetScoreboard(ctx, *args):
 async def list(ctx, *args):
   correct_usage = "Correct usage is `s!list`"
 
-  for guild in client.guilds:
-    #open_scoreboard makes sure the guild has a file
-    open_scoreboard(guild)
-    with open('scoreboards.txt', "r") as scoreboards_orig:
-        scoreboards = json.load(scoreboards_orig)
-        save_scoreboards(scoreboards[str(guild.id)], guild)
-  print(len(client.guilds))
-  
   scoreboards = open_scoreboard(ctx.message.guild)
 
   scoreboards_display = f"There are currently {len(scoreboards)} scoreboards on this server\n" + "".join([("\n`"+scoreboard+"`") for scoreboard in scoreboards])
@@ -713,7 +714,7 @@ def save_scoreboards(scoreboards, guild):
 #open_scoreboard
 def open_scoreboard(guild, create_new_if_missing=True):
 
-  scoreboards = "{}"
+  scoreboards = {}
   try:
     with open(os.path.join("scoreboards/", str(guild.id) + ".txt"), "r") as scoreboards_orig:
       scoreboards = json.load(scoreboards_orig)
