@@ -41,8 +41,9 @@ def prefix(bot, message):
         prefixes = json.load(prefixFile)
     return prefixes.get(str(message.guild.id), DEFAULT_MESSAGE_PREFIX)
 
-
-client = Bot(command_prefix=prefix)
+intents = discord.Intents.default()
+intents.members = True
+client = Bot(command_prefix=prefix, intents=intents)
 client.remove_command('help')
 setup(client)
 
@@ -92,18 +93,16 @@ async def on_ready():
 
   print(client.user)
   guilds = client.guilds
-
   
-
   memberSum = 0
   iteration = 0
   topGuilds = []
   
 
   for guild in guilds:
-
+    print(guild)
     # Make sure each guild has a file
-    open_scoreboard(guild.id)
+    open_scoreboard(guild)
 
     # Gather some data
     memberSum += len(guild.members)
@@ -689,13 +688,9 @@ def default_settings():
 
 async def get_username_from_id(member):
   # Member is in format <@id> or <@!id> if it is a mentioned user
-  print("Member: " + member)
   try:
     id = int(''.join(c for c in member if c.isdigit()))
     user = client.get_user(id)
-    print("Found user")
-    print(user)
-    print(id)
   except:
     user = None
   # If user is not found, replace with the member since it is probably not in the format above
@@ -703,7 +698,6 @@ async def get_username_from_id(member):
     username = member
   else:
     username = "@" + user.name
-    print(user.name)
   return username
 
 #save_scoreboards
