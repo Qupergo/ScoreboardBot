@@ -242,29 +242,29 @@ async def member(ctx, *args):
 
 
 
-      for cur_member in members_to_interact:
-        #For some reason, discord adds ! to mentions sometimes
-        #This will then count as different people, even though they mention the same person
-        #So just default it to <@user_id> instead of <@!user_id>
-        if isinstance(cur_member, discord.member.Member):
-          cur_member = "<@" + str(cur_member.id) + ">"
-        
+    for cur_member in members_to_interact:
+      #For some reason, discord adds ! to mentions sometimes
+      #This will then count as different people, even though they mention the same person
+      #So just default it to <@user_id> instead of <@!user_id>
+      if isinstance(cur_member, discord.member.Member):
+        cur_member = "<@" + str(cur_member.id) + ">"
+      
 
-        if option.lower() in ["add", "+"]:
-          # If the member is already in the scoreboard, don't add them again
-          if cur_member in scoreboards[scoreboard_name]["participants_scores"].keys():
-            continue
-          scoreboards[scoreboard_name]["participants_scores"][cur_member] = 0
-        
-        elif option.lower() in ["remove", "-"]:
-          # If the member is not in the scoreboard you can't remove them.
-          # But if you are removing by role it is completly fine to try and remove a couple member who aren't on the scoreboard.
-          # Since expected behaviour is to remove everyone with that role.
-          if not cur_member in scoreboards[scoreboard_name]["participants_scores"].keys() and len(members_to_interact) == 1:
-            await ctx.send(f":x: The member {cur_member} does not seem to exist in that scoreboard")
-            return
+      if option.lower() in ["add", "+"]:
+        # If the member is already in the scoreboard, don't add them again
+        if cur_member in scoreboards[scoreboard_name]["participants_scores"].keys():
+          continue
+        scoreboards[scoreboard_name]["participants_scores"][cur_member] = 0
+      
+      elif option.lower() in ["remove", "-"]:
+        # If the member is not in the scoreboard you can't remove them.
+        # But if you are removing by role it is completly fine to try and remove a couple member who aren't on the scoreboard.
+        # Since expected behaviour is to remove everyone with that role.
+        if not cur_member in scoreboards[scoreboard_name]["participants_scores"].keys() and len(members_to_interact) == 1:
+          await ctx.send(f":x: The member {cur_member} does not seem to exist in that scoreboard")
+          return
 
-          del scoreboards[scoreboard_name]["participants_scores"][cur_member]
+        del scoreboards[scoreboard_name]["participants_scores"][cur_member]
 
   except KeyError:
     await ctx.send(f":x: The member {member} does not seem to exist in that scoreboard.")
